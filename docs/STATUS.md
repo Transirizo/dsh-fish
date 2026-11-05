@@ -43,7 +43,7 @@
 
 | 项 | 命令 | 结果 |
 |---|---|---|
-| 单元测试 | `node --test packages/dsh-fish-v3/test/*.test.mjs` | **85/85 PASS**（含调用者范围越权与联网默认拒绝回归） |
+| 单元测试 | `node --test packages/dsh-fish-v3/test/*.test.mjs` | **90/90 PASS**（含调用者范围、联网默认拒绝、配置校验与动态预算回归） |
 | 原生 DSH /say 合成回合 | 私聊、群聊、重复事件、私聊第二轮恢复 | **PASS**；delivered=false，见 [验证报告](say-verification.md) |
 | 离线闭环 | `node packages/dsh-fish-v3/sim/offline.mjs` | **11/11 PASS** |
 | 备份演练 | `sim/backup.mjs backup/verify/restore` | **PASS** |
@@ -62,4 +62,4 @@
 
 ## 下一步
 
-先完成 [安全边界整改](plans/security-boundaries.md)：配置实际生效、可信工具范围、独立聊天身份与受限网络；之后才进入真实平台授权验证。源码新增工具访问控制与联网关闭策略已通过85个单测，但未声称生产进程已加载本轮代码。
+先完成 [安全边界整改](plans/security-boundaries.md)：独立聊天身份、凭据服务和受限网络；之后才进入真实平台授权验证。配置已补服务端校验与[实际支持矩阵](configuration.md)，动态预算不重置消费计数。90个单测通过，未声称生产进程已加载本轮代码。

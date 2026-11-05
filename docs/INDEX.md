@@ -16,6 +16,7 @@
 - [`development.md`](development.md) — 开发与构建
 - [`testing.md`](testing.md) — 验证与质量门
 - [`security.md`](security.md) — 安全模型与威胁对策
+- [`configuration.md`](configuration.md) — 配置实际支持矩阵与未实现字段限制
 
 ## 交付与运维
 

@@ -14,47 +14,47 @@ export const GROUP_MODES = ['quiet', 'balanced', 'active']
 export const Config = z.object({
   // 身份与目录
   name: z.string().default('大肥鱼').volatile(),
-  dataDir: z.string().default('').volatile(),
+  dataDir: z.string().default('').description('运行数据目录；修改需要重载插件，不自动迁移数据。'),
 
   // 群内节奏
   groupMode: z.union(GROUP_MODES.map((m) => z.const(m))).default('balanced').volatile(),
 
   // 记忆
-  memoryRetentionDays: z.number().default(0).volatile(),
-  memoryMaxRecords: z.number().default(10000).volatile(),
+  memoryRetentionDays: z.const(0).default(0).description('自动保留清理尚未实现，仅允许0。'),
+  memoryMaxRecords: z.const(10000).default(10000).description('预留字段；当前不执行自动淘汰。'),
 
   // 主动参与（默认关闭）
-  proactiveEnabled: z.boolean().default(false).volatile(),
-  proactiveHeartbeatMs: z.number().default(300000).volatile(),
-  proactiveMinIdleMs: z.number().default(7200000).volatile(),
-  proactiveMaxPerDay: z.number().default(2).volatile(),
+  proactiveEnabled: z.const(false).default(false).volatile().description('跨范围反思与调度尚未完成安全验收，禁止开启。'),
+  proactiveHeartbeatMs: z.number().step(1).min(1000).max(86400000).default(300000).volatile(),
+  proactiveMinIdleMs: z.number().step(1).min(0).max(86400000).default(7200000).volatile(),
+  proactiveMaxPerDay: z.number().step(1).min(0).max(100).default(2).volatile(),
 
   // 发送（默认关闭）
-  sendingEnabled: z.boolean().default(false).volatile(),
+  sendingEnabled: z.const(false).default(false).volatile().description('真实发送链尚未接通，禁止开启；配置不是授权。'),
   sendingAllowlist: z.array(z.string()).default([]).volatile(),
   sendingCategories: z.array(z.string()).default(['reply']).volatile(),
-  sendingCooldownMs: z.number().default(5000).volatile(),
-  sendingDailyLimit: z.number().default(0).volatile(),
+  sendingCooldownMs: z.number().step(1).min(0).max(86400000).default(5000).volatile(),
+  sendingDailyLimit: z.number().step(1).min(0).max(10000).default(0).volatile(),
   quietHours: z.array(z.number()).default([]).volatile(),
 
   // 入站桥接收口（token 为空 = 关闭 /say 路由）
-  ingressToken: z.string().default('').volatile(),
+  ingressToken: z.string().default('').role('secret').volatile(),
 
   // 联网预算（规格 §5）
-  netMaxQueriesPerHour: z.number().default(30).volatile(),
-  netMaxConcurrent: z.number().default(2).volatile(),
-  netMaxBytes: z.number().default(512000).volatile(),
-  netTimeoutMs: z.number().default(15000).volatile(),
+  netMaxQueriesPerHour: z.number().step(1).min(1).max(1000).default(30).volatile(),
+  netMaxConcurrent: z.number().step(1).min(1).max(8).default(2).volatile(),
+  netMaxBytes: z.number().step(1).min(1024).max(2097152).default(512000).volatile(),
+  netTimeoutMs: z.number().step(1).min(1000).max(60000).default(15000).volatile(),
 
   // 平台（默认关闭）
-  biliEnabled: z.boolean().default(false).volatile(),
+  biliEnabled: z.const(false).default(false).volatile().description('平台适配尚未完成，禁止开启。'),
 
   // 日志
   logLevel: z.union([z.const('debug'), z.const('info'), z.const('warn'), z.const('error')]).default('info').volatile(),
 
   // 工具面
-  toolsAllow: z.array(z.string()).default([]).volatile(),
-  toolsRestrict: z.boolean().default(true).volatile(),
+  toolsAllow: z.array(z.string()).default([]).description('预留；不作为聊天权限授权入口。'),
+  toolsRestrict: z.const(true).default(true).description('禁止关闭工具安全边界。'),
 })
 
 /** 读一个可能是 volatile 包装的配置字段：有 .get() 就解包，否则原值/回退。 */

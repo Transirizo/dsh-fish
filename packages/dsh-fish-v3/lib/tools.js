@@ -27,9 +27,9 @@ function emptyParams() {
 export function registerTools(ctx, { memory, config, dataDir, fetchFn, access = createToolAccess() }) {
   const disposers = []
   const budget = createBudget({
-    maxQueriesPerWindow: Number(read(config, 'netMaxQueriesPerHour', 30)) || 0,
+    get maxQueriesPerWindow() { return Number(read(config, 'netMaxQueriesPerHour', 30)) },
     windowMs: 3600000,
-    maxConcurrent: Number(read(config, 'netMaxConcurrent', 2)) || 0,
+    get maxConcurrent() { return Number(read(config, 'netMaxConcurrent', 2)) },
   })
 
   disposers.push(ctx.tools.register({
