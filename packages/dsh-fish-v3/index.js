@@ -15,7 +15,7 @@ import { registerTools } from './lib/tools.js'
 import { registerHealth } from './lib/health.js'
 import { name, VERSION } from './lib/version.js'
 
-export { name, VERSION }
+export { name, VERSION, Config }
 export const inject = ['systemPrompt', 'tools']
 
 /** dataDir：配置 > 环境变量 > <DSH_HOME>/dsh-fish-v3 > 临时目录。 */
