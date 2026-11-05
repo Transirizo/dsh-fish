@@ -32,14 +32,13 @@ test('plugin metadata', () => {
   assert.deepEqual(inject, ['systemPrompt', 'tools', 'webServer'])
 })
 
-test('apply registers identity + policy + tools + health', () => {
+test('Host apply leaves engineering persona untouched and registers tools + health', () => {
   const { ctx, registrations } = mockCtx()
   const inst = apply(ctx, { dataDir: '/tmp/dsh-fish-v3-test' })
   assert.equal(typeof inst.dispose, 'function')
 
   const sectionNames = registrations.sections.map((s) => s.name)
-  assert.ok(sectionNames.includes('dafeyu:identity'))
-  assert.ok(sectionNames.includes('dafeyu:policy'))
+  assert.deepEqual(sectionNames, [])
 
   const toolNames = registrations.tools.map((t) => t.name).sort()
   assert.deepEqual(toolNames, ['fish_browse', 'fish_diary', 'fish_interest', 'fish_recall', 'fish_remember', 'fish_status'])

@@ -8,8 +8,6 @@
  * systemPrompt / tools 是 agent 循环的必需件；webServer 走运行时探测，缺了就降级。
  */
 import { Config, read } from './lib/config.js'
-import { registerIdentity } from './lib/identity.js'
-import { registerPolicy } from './lib/policy.js'
 import { createMemory } from './lib/memory.js'
 import { registerTools } from './lib/tools.js'
 import { registerHealth } from './lib/health.js'
@@ -35,12 +33,10 @@ export function apply(ctx, config = {}) {
   const memory = createMemory(dataDir)
 
   const registrars = [
-    () => registerIdentity(ctx),
-    () => registerPolicy(ctx),
     () => registerTools(ctx, { memory, config, dataDir }),
     () => registerHealth(ctx, { memory, config, dataDir }),
     () => ctx.inject(['agents', 'agentDefaultModel', 'sessions'], (host) => {
-      host.effect(() => registerSay(host, { token: () => read(config, 'ingressToken', ''), dataDir }), 'fish.say');
+      host.effect(() => registerSay(host, { token: () => read(config, 'ingressToken', ''), dataDir, memory, config }), 'fish.say');
     }),
     () => startHeartbeat(ctx, {
       memory,

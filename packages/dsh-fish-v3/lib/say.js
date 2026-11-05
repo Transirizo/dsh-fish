@@ -3,8 +3,9 @@ import { randomUUID, createHash, timingSafeEqual } from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs'
 import path from 'node:path'
 import { sanitizeForeign, looksSecret } from './guard.js'
+import { setupChatScope } from './chat-scope.js'
 
-export function registerSay(ctx, { token, dataDir }) {
+export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
   const agents = ctx.agents ?? ctx.get?.('agents')
   const models = ctx.agentDefaultModel ?? ctx.get?.('agentDefaultModel')
   const sessions = ctx.sessions ?? ctx.get?.('sessions')
@@ -70,8 +71,9 @@ export function registerSay(ctx, { token, dataDir }) {
         state.events[eventKey] = { status: 'processing' }
         save()
         let sessionId = state.sessions[scope]
-        const setup = (agentCtx) => {
-          // 诊断 Agent 不具有任何模型工具；避免继承工程能力或未隔离记忆工具。
+        const setup = (agentCtx, subject) => {
+          if (memory) return setupChatScope(agentCtx, subject, { memory, config, dataDir, scope })
+          // 无记忆服务的测试上下文禁止全部工具。
           const names = agentCtx.tools.definitions().map((t) => t.name)
           agentCtx.effect(() => agentCtx.tools.restrict({ deny: names }), 'fish.deny-global-tools')
           agentCtx.effect(() => agentCtx.tools.guard(() => '诊断会话禁止所有工具'), 'fish.deny-tool-execution')

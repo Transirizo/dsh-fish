@@ -43,7 +43,7 @@
 
 | 项 | 命令 | 结果 |
 |---|---|---|
-| 单元测试 | `node --test packages/dsh-fish-v3/test/*.test.mjs` | **90/90 PASS**（含调用者范围、联网默认拒绝、配置校验与动态预算回归） |
+| 单元测试 | `node --test packages/dsh-fish-v3/test/*.test.mjs` | **91/91 PASS**（含局部聊天身份、工程工具拒绝、调用者范围、配置及预算回归） |
 | 原生 DSH /say 合成回合 | 私聊、群聊、重复事件、私聊第二轮恢复 | **PASS**；delivered=false，见 [验证报告](say-verification.md) |
 | 离线闭环 | `node packages/dsh-fish-v3/sim/offline.mjs` | **11/11 PASS** |
 | 备份演练 | `sim/backup.mjs backup/verify/restore` | **PASS** |
@@ -59,6 +59,10 @@
 - 健康路由线上命中（占位域名不可达）。
 - 抓取代理/DNS 二次校验（browse.js 为纯逻辑，真实部署需受限代理）。
 - fish_browse 的真实外网抓取（联调时未实调，避免无谓请求）。
+
+## 最新隔离验证
+
+Host源码不再全局注入聊天身份。真实DSH隔离进程中，合成私聊用工具写入并召回记忆；另一合成群聊未召回该私聊记录。见[聊天隔离报告](chat-isolation.md)。该结果不等于OS/网络/管理面强隔离完成，生产GUI新代码载入仍未验证。
 
 ## 下一步
 
