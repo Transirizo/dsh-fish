@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Da Fei Yu">
+  <circle cx="32" cy="32" r="30" fill="#dff1fb"/>
+  <path d="M14 32c8-10 24-12 36-4-2 6-8 10-14 11l6 8-7 3-5-8c-6 2-12 1-16-4z" fill="#247bbf"/>
+  <circle cx="44" cy="27" r="2.6" fill="#0b3350"/>
+  <path d="M20 36c3 3 7 4 11 3" fill="none" stroke="#0b3350" stroke-width="1.8" stroke-linecap="round"/>
+</svg>

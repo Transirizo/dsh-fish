@@ -1,0 +1,32 @@
+# ---- 依赖与构建 ----
+node_modules/
+*.tgz
+dist/
+build/
+
+# ---- 运行期数据（受控区域，绝不入库）----
+data/
+backups/
+logs/
+*.log
+
+# ---- 密钥与凭据 ----
+.env
+.env.*
+*.pem
+*.key
+credentials*.yaml
+secrets/
+
+# ---- 会话 / 记忆 / 快照 ----
+*.jsonl
+state.json
+instance.json
+*.sqlite
+*.sqlite-*
+
+# ---- 系统 ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

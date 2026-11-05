@@ -1,0 +1,6 @@
+# dsh-fish-v3 —— bundle patch 层
+# 只插一行插件；config 全部走 Config schema 的默认值，部署取值由用户在
+# 自己 profile 的 cordis.patch.yml 里覆盖（会整体替换本行 config，属预期）。
+- insert:
+    - id: dsh-fish-v3
+      name: dsh-fish-v3

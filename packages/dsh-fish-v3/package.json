@@ -1,0 +1,40 @@
+{
+  "name": "dsh-fish-v3",
+  "version": "3.2.0",
+  "description": "大肥鱼 Da Fei Yu — 原生 DSH 陪伴者插件：稳定身份、会话策略、持久记忆、健康检查。",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "lib",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "AGENTS.md"
+  ],
+  "scripts": {
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "~3.19.0"
+  },
+  "engines": {
+    "node": ">=24.9.0",
+    "dsh": ">=0.2.0-rc.1 <0.3.0-0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "keywords": ["dsh", "dsh-plugin", "deepseek-harness", "companion", "agent"],
+  "license": "MIT"
+}
