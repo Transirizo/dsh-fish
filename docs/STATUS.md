@@ -30,16 +30,20 @@
 - 插件 `packages/dsh-fish-v3` v0.1：
   - 身份段 `dafeyu:identity`、策略段 `dafeyu:policy`、Config、JSONL 记忆、guard、健康路由。
   - 工具 6 个：`fish_status` / `fish_recall` / `fish_remember` / `fish_diary` / `fish_interest`（带衰减）/ `fish_browse`（受限抓取）。
-  - 消息契约层：ingest（幂等去重）/ delivery（授权闸默认拒绝）/ loop。
+  - 消息契约层：ingest（幂等去重）/ delivery（授权闸默认拒绝）/ loop（含参与节奏、记忆范围隔离）。
   - 联网安全：net.js（SSRF）/ budget.js（预算）/ browse.js（体积+重定向复检+provenance）。
   - 自主心跳：reflect.js（确定性整理）/ heartbeat.js（定时器，默认关闭、内部不外发）。
+  - 群内参与：participation.js（点名/提问/相关/冷落 + 三模式）。
+  - 统一配置：Config 全字段（发送/联网预算/主动/记忆/节奏/日志/平台开关）。
+  - 记忆范围隔离：recall/listByType 按 scope 过滤（global/shared 共享，private/group 隔离）。
+  - 行为评测基建：eval/scenarios.json + RUBRIC.md（规格 §17）。
   - 备份/恢复 CLI `sim/backup.mjs`、离线闭环 `sim/offline.mjs`。
 
 ## 验证证据（可复现）
 
 | 项 | 命令 | 结果 |
 |---|---|---|
-| 单元测试 | `node --test packages/dsh-fish-v3/test/*.test.mjs` | **65/65 PASS** |
+| 单元测试 | `node --test packages/dsh-fish-v3/test/*.test.mjs` | **77/77 PASS** |
 | 离线闭环 | `node packages/dsh-fish-v3/sim/offline.mjs` | **11/11 PASS** |
 | 备份演练 | `sim/backup.mjs backup/verify/restore` | **PASS** |
 | 打包 | `npm pack --dry-run` | 25 文件 19kB，无密钥/数据 |
