@@ -37,6 +37,9 @@ export const Config = z.object({
   sendingDailyLimit: z.number().default(0).volatile(),
   quietHours: z.array(z.number()).default([]).volatile(),
 
+  // 入站桥接收口（token 为空 = 关闭 /say 路由）
+  ingressToken: z.string().default('').volatile(),
+
   // 联网预算（规格 §5）
   netMaxQueriesPerHour: z.number().default(30).volatile(),
   netMaxConcurrent: z.number().default(2).volatile(),

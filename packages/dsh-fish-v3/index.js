@@ -13,6 +13,7 @@ import { registerPolicy } from './lib/policy.js'
 import { createMemory } from './lib/memory.js'
 import { registerTools } from './lib/tools.js'
 import { registerHealth } from './lib/health.js'
+import { registerSay } from './lib/say.js'
 import { startHeartbeat } from './lib/heartbeat.js'
 import { name, VERSION } from './lib/version.js'
 
@@ -38,6 +39,7 @@ export function apply(ctx, config = {}) {
     () => registerPolicy(ctx),
     () => registerTools(ctx, { memory, config, dataDir }),
     () => registerHealth(ctx, { memory, config, dataDir }),
+    () => registerSay(ctx, { token: read(config, 'ingressToken', ''), dataDir }),
     () => startHeartbeat(ctx, {
       memory,
       enabled: read(config, 'proactiveEnabled', false) === true,
