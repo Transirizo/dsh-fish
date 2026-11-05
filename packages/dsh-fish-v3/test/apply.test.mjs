@@ -1,6 +1,6 @@
 /**
  * apply/dispose 生命周期测试：用真实插件代码（index.js 的 apply）+ 最小 mock 宿主，
- * 验证装配与清理的接线正确。**不是**「真实 DSH 加载」验收（那需要审批 + 独立 profile）。
+ * 验证装配与清理的接线正确。**不是**「真实 DSH 加载」验收。
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -16,12 +16,10 @@ function mockCtx() {
     tools: {
       register: (def) => { registrations.tools.push(def); return () => {} },
     },
-    get: (key) => {
-      if (key === 'webServer') {
-        return { register: (r) => { registrations.routes.push(r); return () => {} } }
-      }
-      return undefined
+    webServer: {
+      register: (r) => { registrations.routes.push(r); return () => {} },
     },
+    get: () => undefined, // 心跳默认关闭不会走到 timer 探测
   }
   return { ctx, registrations }
 }
@@ -29,7 +27,7 @@ function mockCtx() {
 test('plugin metadata', () => {
   assert.equal(name, 'dsh-fish-v3')
   assert.equal(VERSION, '3.2.0')
-  assert.deepEqual(inject, ['systemPrompt', 'tools'])
+  assert.deepEqual(inject, ['systemPrompt', 'tools', 'webServer'])
 })
 
 test('apply registers identity + policy + tools + health', () => {
@@ -47,22 +45,6 @@ test('apply registers identity + policy + tools + health', () => {
   assert.equal(registrations.routes.length, 1)
   assert.equal(registrations.routes[0].path, '/dsh-fish-v3/health')
 
-  inst.dispose()
-})
-
-test('apply degrades when webServer is absent (health skipped, no throw)', () => {
-  const registrations = { sections: [], tools: [], routes: [] }
-  const ctx = {
-    systemPrompt: {
-      section: (s) => { registrations.sections.push(s); return () => {} },
-      getSectionOrder: () => 0,
-    },
-    tools: { register: (def) => { registrations.tools.push(def); return () => {} } },
-    get: () => undefined,
-  }
-  const inst = apply(ctx, { dataDir: '/tmp/dsh-fish-v3-test2' })
-  assert.equal(registrations.routes.length, 0)
-  assert.equal(registrations.tools.length, 6)
   inst.dispose()
 })
 

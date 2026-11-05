@@ -9,10 +9,8 @@ import { VERSION } from './version.js'
 import { redact } from './guard.js'
 
 export function registerHealth(ctx, { memory, config, dataDir }) {
-  const ws = ctx.get ? ctx.get('webServer') : undefined
-  if (!ws?.register) return () => {}
-
-  return ws.register({
+  // webServer 已在 inject 里声明，apply 时可用
+  return ctx.webServer.register({
     kind: 'exact',
     path: '/dsh-fish-v3/health',
     handler: async (_request, response) => {

@@ -17,7 +17,7 @@ import { startHeartbeat } from './lib/heartbeat.js'
 import { name, VERSION } from './lib/version.js'
 
 export { name, VERSION, Config }
-export const inject = ['systemPrompt', 'tools']
+export const inject = ['systemPrompt', 'tools', 'webServer']
 
 /** dataDir：配置 > 环境变量 > <DSH_HOME>/dsh-fish-v3 > 临时目录。 */
 export function resolveDataDir(config = {}) {
