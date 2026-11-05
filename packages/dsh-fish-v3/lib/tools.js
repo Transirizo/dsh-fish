@@ -24,7 +24,11 @@ function emptyParams() {
  */
 export function registerTools(ctx, { memory, config, dataDir, fetchFn }) {
   const disposers = []
-  const budget = createBudget({ maxQueriesPerWindow: 30, windowMs: 3600000, maxConcurrent: 2 })
+  const budget = createBudget({
+    maxQueriesPerWindow: Number(config.netMaxQueriesPerHour ?? 30) || 0,
+    windowMs: 3600000,
+    maxConcurrent: Number(config.netMaxConcurrent ?? 2) || 0,
+  })
 
   disposers.push(ctx.tools.register({
     name: 'fish_status',
@@ -185,7 +189,12 @@ export function registerTools(ctx, { memory, config, dataDir, fetchFn }) {
     },
     output: textOutput({ ok: { type: 'boolean' }, text: { type: 'string' } }),
     async execute(args = {}) {
-      const r = await browse(String(args.url ?? ''), { budget, fetchFn })
+      const r = await browse(String(args.url ?? ''), {
+        budget,
+        fetchFn,
+        maxBytes: Number(config.netMaxBytes ?? 512000) || 512000,
+        timeoutMs: Number(config.netTimeoutMs ?? 15000) || 15000,
+      })
       if (!r.ok) return { ok: false, text: `抓不动：${r.error}` }
       const when = new Date(r.retrievedAt).toISOString()
       return { ok: true, text: `[来源 ${r.url} · 抓取 ${when} · ${r.contentType}]\n${r.text}` }

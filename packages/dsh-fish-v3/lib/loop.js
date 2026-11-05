@@ -57,8 +57,8 @@ export function createLoop({ memory, model, ingest, delivery, allowInbound, part
         }
       }
 
-      // 6. 记忆召回（作为模型上下文）
-      const context = await memory.recall(text, { limit: 3 })
+      // 6. 记忆召回（作为模型上下文；按当前 scope 隔离，见 §8）
+      const context = await memory.recall(text, { limit: 3, scope: event.scope })
 
       // 7. 模型调用
       const response = await model({

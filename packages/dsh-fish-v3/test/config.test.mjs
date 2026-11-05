@@ -15,8 +15,24 @@ test('defaults: real sending and proactive are OFF', () => {
   assert.equal(c.memoryMaxRecords, 10000)
 })
 
+test('network budgets and sending policy have safe defaults', () => {
+  const c = Config({})
+  assert.deepEqual(c.sendingAllowlist, [])
+  assert.equal(c.sendingDailyLimit, 0)
+  assert.equal(c.netMaxQueriesPerHour, 30)
+  assert.equal(c.netMaxConcurrent, 2)
+  assert.equal(c.netMaxBytes, 512000)
+  assert.equal(c.netTimeoutMs, 15000)
+  assert.equal(c.biliEnabled, false)
+  assert.equal(c.logLevel, 'info')
+})
+
 test('rejects unknown groupMode', () => {
   assert.throws(() => Config({ groupMode: 'screaming' }))
+})
+
+test('rejects unknown logLevel', () => {
+  assert.throws(() => Config({ logLevel: 'loud' }))
 })
 
 test('accepts an explicit groupMode', () => {

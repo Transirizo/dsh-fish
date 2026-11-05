@@ -17,6 +17,17 @@ const DAY_MS = 86_400_000
 export const MEMORY_TYPES = ['fact', 'event', 'opinion', 'interest', 'diary', 'question', 'reflection']
 export const MEMORY_SCOPES = ['global', 'private', 'group', 'shared']
 
+/**
+ * 范围可见性：无查询范围 = 全量（P0 兼容）；有范围时，
+ * 只回「global / shared / 该范围本身」，隔离其他会话的 private/group 记忆（规格 §8）。
+ */
+export function scopeAllows(recordScope, queryScope) {
+  const rs = String(recordScope ?? 'global')
+  if (!queryScope) return true
+  if (rs === 'global' || rs === 'shared') return true
+  return rs === String(queryScope)
+}
+
 /** 查询切词：中文按二字切片补匹配（同旧版 tokensOf 思路）。 */
 export function tokensOf(query) {
   const q = String(query ?? '').trim().toLowerCase()
@@ -74,10 +85,12 @@ export function createMemory(dataDir) {
       const tokens = tokensOf(query)
       const limit = Math.max(1, Number(opts.limit ?? 8) || 8)
       const days = Number(opts.days ?? 0) || 0
+      const scope = opts.scope
       const now = Date.now()
       const scored = []
       for (const r of rows) {
         if (days > 0 && now - Number(r.ts ?? 0) > days * DAY_MS) continue
+        if (!scopeAllows(r.scope, scope)) continue
         const s = score(r, tokens, now)
         if (s > 0) scored.push({ r, s })
       }
@@ -88,12 +101,13 @@ export function createMemory(dataDir) {
     async count() { return (await readAll()).length },
     async list() { return readAll() },
 
-    /** 按类型列出（新→旧），limit 截断。 */
+    /** 按类型列出（新→旧），limit 截断；可传 scope 做范围隔离。 */
     async listByType(type, opts = {}) {
       const rows = await readAll()
       const limit = Math.max(1, Number(opts.limit ?? 50) || 50)
+      const scope = opts.scope
       return rows
-        .filter((r) => r.type === type)
+        .filter((r) => r.type === type && scopeAllows(r.scope, scope))
         .sort((a, b) => Number(b.ts) - Number(a.ts))
         .slice(0, limit)
     },
