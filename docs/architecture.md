@@ -24,6 +24,8 @@ packages/dsh-fish-v3/
 ├── lib/policy.js        注册 systemPrompt 段 dafeyu:policy（order≈10199）
 ├── lib/memory.js        追加式 JSONL 记忆（append / recall / count）
 ├── lib/guard.js         外来文本消毒 + 秘密外发拦截
+├── lib/ingest.js        入站事件规范化 + 会话键派生 + 幂等去重（契约 §3）
+├── lib/delivery.js      出站投递授权闸：默认拒绝 + allowlist/类别/冷却/日限/停止开关/审计
 ├── lib/tools.js         fish_status / fish_recall / fish_remember
 ├── lib/health.js        GET /dsh-fish-v3/health 路由
 └── locale/ icon.svg
@@ -42,7 +44,8 @@ HTTP 投递入口（沿用旧版 `/say` 形制，桥接只发 HTTP、不自建 D
 
 - `channel`：同一名字 = 同一间房；`scene: private` 并入主会话；`scene: group` 按 channel 建/复用房间。
 - 每条入站事件必带：平台账号、事件 ID（幂等键）、会话 scope、说话人、时间戳、内容类型。
-- 会话键 = `account + channel/private scope` 派生；投递状态可追踪。
+- 会话键 = `account + scope` 派生（`lib/ingest.js` 的 `sessionKey`）；投递状态可追踪。
+- 出站投递经 `lib/delivery.js` 的授权闸：内容生成与投递授权分离，模型外强制（§9）。
 
 ## 4. 出站投递契约
 
