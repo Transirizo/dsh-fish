@@ -7,6 +7,7 @@ import { createMemory } from '../lib/memory.js'
 import { createIngest } from '../lib/ingest.js'
 import { createDeliveryGate } from '../lib/delivery.js'
 import { createLoop } from '../lib/loop.js'
+import { createParticipation } from '../lib/participation.js'
 
 async function setup(overrides = {}) {
   const dir = await mkdtemp(path.join(tmpdir(), 'fish-loop-'))
@@ -70,5 +71,23 @@ test('delivery denied (target not allowed) still records memory but does not del
   assert.equal(r.delivered, false)
   assert.equal(r.deliveryReason, 'target-not-allowed')
   assert.equal(await memory.count(), 1)
+  await rm(dir, { recursive: true, force: true })
+})
+
+test('participation makes the loop stay silent (no model, no delivery, still remembered)', async () => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'fish-loop-'))
+  const memory = createMemory(dir)
+  const ingest = createIngest()
+  const delivery = createDeliveryGate({ enabled: true, allowlist: ['qq-main:group:987654'] })
+  let modelCalled = false
+  const model = async () => { modelCalled = true; return '不该出现' }
+  const loop = createLoop({ memory, model, ingest, delivery, participation: createParticipation('balanced') })
+
+  const r = await loop.handleInbound(ev({ text: '今天天气不错啊' })) // 没点名、不相关
+  assert.equal(r.ok, true)
+  assert.equal(r.silent, true)
+  assert.equal(modelCalled, false)
+  assert.equal(r.delivered, false)
+  assert.equal(await memory.count(), 1) // 还是记了这条「听到的话」
   await rm(dir, { recursive: true, force: true })
 })
