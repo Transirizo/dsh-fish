@@ -48,16 +48,17 @@
 | 备份演练 | `sim/backup.mjs backup/verify/restore` | **PASS** |
 | 打包 | `npm pack --dry-run` | 25 文件 19kB，无密钥/数据 |
 | 真实加载 | `install_bundle` + `Tool.listTools` + `Config.listConfigs` | **PASS** |
+| 真实模型联调 | 子 agent 用 deepseek-v4-pro 调用 fish_* 6 工具 + 记忆读写 | **PASS**（status/remember/recall/diary/interest 全通） |
 
 ## 未验证（不得宣称已支持）
 
-- 完整「注入事件→模型→投递」消息闭环（需桥接 + 真实模型，当前仅离线桩验证）。
-- 真实 QQ 登录收发、真实模型 provider、真实 B 站账号、生产 cutover。
+- 真实 QQ 登录收发、真实 B 站账号、生产 cutover、主动发送启用（真实对外投递）。
 - 健康路由线上命中（占位域名不可达）。
 - 抓取代理/DNS 二次校验（browse.js 为纯逻辑，真实部署需受限代理）。
+- fish_browse 的真实外网抓取（联调时未实调，避免无谓请求）。
 
-## 下一步（P1 继续）
+## 下一步
 
-1. HTTP 桥接收口（`POST /dsh-fish-v3/say` + token 鉴权）与 `astrbot-relay` 契约对齐。
-2. 行为评测：多轮中文群聊场景 + 评分量表（规格 §17）。
-3. 模型/信息 provider 的独立配置与路由/failover。
+1. 真实平台授权后：QQ 桥接真机、B 站账号、主动发送启用。
+2. 独立 profile 正式部署（把插件从「已安装已停用」转为正式启用）。
+3. 真实模型上的行为评测（用 eval/scenarios.json 跑多轮，需驱动会话）。
