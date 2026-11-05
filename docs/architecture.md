@@ -26,6 +26,8 @@ packages/dsh-fish-v3/
 ├── lib/guard.js         外来文本消毒 + 秘密外发拦截
 ├── lib/ingest.js        入站事件规范化 + 会话键派生 + 幂等去重（契约 §3）
 ├── lib/delivery.js      出站投递授权闸：默认拒绝 + allowlist/类别/冷却/日限/停止开关/审计
+├── lib/loop.js          回合处理链：入站→记忆→模型→记忆写→投递授权（桥接可调用的收口）
+├── lib/backup.js        备份 / 隔离恢复 / 校验（v0.1 数据 = memory.jsonl）
 ├── lib/tools.js         fish_status / fish_recall / fish_remember
 ├── lib/health.js        GET /dsh-fish-v3/health 路由
 └── locale/ icon.svg

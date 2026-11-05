@@ -11,6 +11,9 @@
 # 单元测试（Node 原生 test runner；目录形式参数会触发 Node 已知 MODULE_NOT_FOUND 坑，用 glob）
 node --test packages/dsh-fish-v3/test/*.test.mjs
 
+# 离线模拟消息闭环（无真实账号/外部模型，退出码 0=全过）
+node packages/dsh-fish-v3/sim/offline.mjs
+
 # 递归跑全部
 node --test
 

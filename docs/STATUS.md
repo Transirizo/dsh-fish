@@ -23,15 +23,18 @@
 - **插件 `packages/dsh-fish-v3` v0.1**：身份段 `dafeyu:identity`、策略段 `dafeyu:policy`、Config
   （schemastery，默认真实发送/主动关闭）、追加式 JSONL 记忆、`guard.js`（消毒+秘密拦截）、健康路由
   `GET /dsh-fish-v3/health`、工具 `fish_status`/`fish_recall`/`fish_remember`、locale/icon。
-- **测试 22/22 全绿**（`node --test packages/dsh-fish-v3/test/*.test.mjs`）：identity/policy/memory/guard/config/apply。
+- **消息契约层**：`lib/ingest.js`（入站规范化+会话键+幂等去重）、`lib/delivery.js`（出站授权闸默认拒绝）、
+  `lib/loop.js`（回合处理链）、`lib/backup.js`（备份/隔离恢复/校验）。
+- **测试 44/44 全绿**；**离线模拟闭环 `node sim/offline.mjs` 11/11 通过**（私聊/群聊注入、会话映射、
+  去重、未授权拒绝、密钥拦截、投递授权链、记忆落库）。
 - `npm pack --dry-run`：16 文件、9.8kB，无密钥/数据；测试留在仓库、不进 bundle。
-- Git：`bf38081`（骨架+插件）、随后的 refactor 提交。
+- Git：`bf38081`（骨架+插件）→ `d9a77fc`（refactor）→ `0599f54`（契约层）→ 后续 loop/backup/sim 提交。
 
 ## 待办（下一步）
 
-1. 离线模拟闭环：确定性模型桩 + 事件注入 + 幂等去重 + 授权拒绝（规格 §15）。
-2. 备份/恢复工具与隔离恢复演练。
-3. 安装/激活验收（真实 DSH load + 生命周期 + 消息闭环）。
+1. 把 `loop` 接到 HTTP 入站路由（`POST /dsh-fish-v3/say` + token 鉴权），形成真正的桥接收口。
+2. 备份/恢复的「隔离恢复演练」脚本（`fish backup/restore` 操作语义的 runnable 入口）。
+3. 安装/激活验收（真实 DSH load + 生命周期 + 消息闭环）—— 仍受审批阻塞。
 
 ## 阻塞
 
