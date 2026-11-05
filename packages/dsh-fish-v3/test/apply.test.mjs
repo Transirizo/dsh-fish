@@ -42,7 +42,7 @@ test('apply registers identity + policy + tools + health', () => {
   assert.ok(sectionNames.includes('dafeyu:policy'))
 
   const toolNames = registrations.tools.map((t) => t.name).sort()
-  assert.deepEqual(toolNames, ['fish_diary', 'fish_interest', 'fish_recall', 'fish_remember', 'fish_status'])
+  assert.deepEqual(toolNames, ['fish_browse', 'fish_diary', 'fish_interest', 'fish_recall', 'fish_remember', 'fish_status'])
 
   assert.equal(registrations.routes.length, 1)
   assert.equal(registrations.routes[0].path, '/dsh-fish-v3/health')
@@ -62,7 +62,7 @@ test('apply degrades when webServer is absent (health skipped, no throw)', () =>
   }
   const inst = apply(ctx, { dataDir: '/tmp/dsh-fish-v3-test2' })
   assert.equal(registrations.routes.length, 0)
-  assert.equal(registrations.tools.length, 5)
+  assert.equal(registrations.tools.length, 6)
   inst.dispose()
 })
 

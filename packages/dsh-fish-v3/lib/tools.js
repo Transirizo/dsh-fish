@@ -6,6 +6,8 @@
  */
 import { VERSION } from './version.js'
 import { sanitizeForeign, looksSecret } from './guard.js'
+import { browse } from './browse.js'
+import { createBudget } from './budget.js'
 
 const textOutput = (schema) => ({
   schema: { type: 'object', properties: schema, required: Object.keys(schema), additionalProperties: false },
@@ -20,8 +22,9 @@ function emptyParams() {
  * @param {object} ctx 宿主上下文（inject tools）
  * @returns {() => void} 注销全部工具
  */
-export function registerTools(ctx, { memory, config, dataDir }) {
+export function registerTools(ctx, { memory, config, dataDir, fetchFn }) {
   const disposers = []
+  const budget = createBudget({ maxQueriesPerWindow: 30, windowMs: 3600000, maxConcurrent: 2 })
 
   disposers.push(ctx.tools.register({
     name: 'fish_status',
@@ -166,6 +169,26 @@ export function registerTools(ctx, { memory, config, dataDir }) {
         return { ok: true, text: ranked.map((x) => `${x.text}（${x.level}，${x.ageDays} 天前）`).join('\n') }
       }
       return { ok: false, text: `未知 verb：${verb}` }
+    },
+  }))
+
+  disposers.push(ctx.tools.register({
+    name: 'fish_browse',
+    description: '抓一个公开网页看看内容。只在需要核对事实、查当前信息、或学新说法时用；会返回来源和抓取时间。受限：只允许公网 http(s) URL，体积与次数有预算。',
+    parameters: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: '要抓的完整 http(s) URL。' },
+      },
+      required: ['url'],
+      additionalProperties: false,
+    },
+    output: textOutput({ ok: { type: 'boolean' }, text: { type: 'string' } }),
+    async execute(args = {}) {
+      const r = await browse(String(args.url ?? ''), { budget, fetchFn })
+      if (!r.ok) return { ok: false, text: `抓不动：${r.error}` }
+      const when = new Date(r.retrievedAt).toISOString()
+      return { ok: true, text: `[来源 ${r.url} · 抓取 ${when} · ${r.contentType}]\n${r.text}` }
     },
   }))
 
