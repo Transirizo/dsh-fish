@@ -4,8 +4,8 @@
 
 ## 阶段
 
-- **P0 — 交付完成**（离线 + 真实 DSH 加载验收均达成）。
-- **P1 — 已上线**：核心能力落地；**生产切换完成**（`web` profile 现跑 V3.2，旧版已停用）。
+- **P0 — 尚未完整验收**：真实加载与局部测试已通过，但真实平台入口、工程/聊天强隔离、完整迁移恢复仍有缺口；之前“完整交付”的表述过度。
+- **P1 — 部分实现**：生产 GUI 已加载 V3.2；这不等于 QQ 链路或全部设置功能已验证。旧版与星驿已按用户后续授权移除。
 - P2：未开始。
 
 ## 真实 DSH 加载验收（PASS，证据）
@@ -17,7 +17,7 @@
 | Config 发现 | `Config.listConfigs` 条目 `status: "schema"` |
 | 停用/启用 | `set_plugin` 停用→启用→停用均 `applied` |
 
-最终状态：插件**已安装、已停用**（`web` 里与在跑旧版 fish 共存会「两条鱼」+ 污染工程会话；永久部署走独立 profile）。
+当前生产 GUI：V3.2 已安装启用，用户已确认设置中出现“大肥鱼”；旧版与星驿已移除。工程/聊天身份尚未严格分离。最新 /say 源码仅在隔离诊断进程验证，当前 GUI 进程是否载入最新模块尚未证明。
 
 ## 环境修复（已记录，可回滚）
 
@@ -43,7 +43,8 @@
 
 | 项 | 命令 | 结果 |
 |---|---|---|
-| 单元测试 | `node --test packages/dsh-fish-v3/test/*.test.mjs` | **77/77 PASS** |
+| 单元测试 | `node --test packages/dsh-fish-v3/test/*.test.mjs` | **80/80 PASS**（本轮重新执行） |
+| 原生 DSH /say 合成回合 | 私聊、群聊、重复事件、私聊第二轮恢复 | **PASS**；delivered=false，见 [验证报告](say-verification.md) |
 | 离线闭环 | `node packages/dsh-fish-v3/sim/offline.mjs` | **11/11 PASS** |
 | 备份演练 | `sim/backup.mjs backup/verify/restore` | **PASS** |
 | 打包 | `npm pack --dry-run` | 25 文件 19kB，无密钥/数据 |

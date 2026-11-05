@@ -39,7 +39,9 @@ export function apply(ctx, config = {}) {
     () => registerPolicy(ctx),
     () => registerTools(ctx, { memory, config, dataDir }),
     () => registerHealth(ctx, { memory, config, dataDir }),
-    () => registerSay(ctx, { token: read(config, 'ingressToken', ''), dataDir }),
+    () => ctx.inject(['agents', 'agentDefaultModel', 'sessions'], (host) => {
+      host.effect(() => registerSay(host, { token: () => read(config, 'ingressToken', ''), dataDir }), 'fish.say');
+    }),
     () => startHeartbeat(ctx, {
       memory,
       enabled: read(config, 'proactiveEnabled', false) === true,
@@ -48,12 +50,11 @@ export function apply(ctx, config = {}) {
     }),
   ]
   for (const reg of registrars) {
-    try {
-      const d = reg()
-      if (typeof d === 'function') disposers.push(d)
-    } catch (err) {
-      console.error(`[${name}] 注册失败：`, err?.message ?? err)
-    }
+    const off = ctx.effect(() => {
+      const cleanup = reg()
+      return typeof cleanup === 'function' ? cleanup : () => {}
+    }, 'fish.registration')
+    disposers.push(off)
   }
 
   return {

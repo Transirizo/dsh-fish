@@ -1,113 +1,134 @@
-/**
- * say.js —— 入站桥接收口 `POST /dsh-fish-v3/say`（token 鉴权）。
- *
- * 替代「自建 DSH 会话」的轻量桥入口：桥只发 HTTP，本插件驱动 DSH agent 会话
- * （同一身份、按 channel 分房、记忆按 scope 隔离）。
- *
- * 请求体：{ text, channel?, scene?('private'|'group'), speaker? }
- * 零依赖：模型选择走 agentDefaultModel 服务；消息手工构造（内联 createUserMessage 语义）。
- */
-import { randomUUID } from 'node:crypto'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+/** 合成事件诊断入口。真实平台接入在宿主隔离与授权验收前拒绝。 */
+import { randomUUID, createHash, timingSafeEqual } from 'node:crypto'
+import { mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs'
 import path from 'node:path'
+import { sanitizeForeign, looksSecret } from './guard.js'
 
 export function registerSay(ctx, { token, dataDir }) {
-  if (!token) return () => {}
-  const agents = ctx.get ? ctx.get('agents') : undefined
-  const defaultModel = ctx.get ? ctx.get('agentDefaultModel') : undefined
-  if (!agents?.create || !agents?.resume || !agents?.get || !defaultModel?.currentSelection) return () => {}
-  const ws = ctx.webServer
-  if (!ws?.register) return () => {}
-
-  const sessionsFile = path.join(dataDir, 'say-sessions.json')
-  let sessions = {}
-  try { sessions = JSON.parse(readFileSync(sessionsFile, 'utf8')) } catch { /* 首次 */ }
-  const saveSessions = () => {
-    try { mkdirSync(dataDir, { recursive: true }); writeFileSync(sessionsFile, JSON.stringify(sessions, null, 2)) } catch { /* 忽略 */ }
+  const agents = ctx.agents ?? ctx.get?.('agents')
+  const models = ctx.agentDefaultModel ?? ctx.get?.('agentDefaultModel')
+  const sessions = ctx.sessions ?? ctx.get?.('sessions')
+  if (!agents || !models || !sessions) throw new Error('缺少原生会话服务')
+  const file = path.join(dataDir, 'say-ledger-v1.json')
+  let state = { version: 1, sessions: {}, events: {} }
+  try { state = JSON.parse(readFileSync(file, 'utf8')) } catch (err) {
+    if (err.code !== 'ENOENT') throw err
   }
-
-  return ws.register({
-    kind: 'exact',
-    path: '/dsh-fish-v3/say',
-    handler: async (request, response) => {
+  if (state.version !== 1) throw new Error('不兼容的入站账本版本')
+  const save = () => {
+    mkdirSync(dataDir, { recursive: true, mode: 0o700 })
+    writeFileSync(file + '.tmp', JSON.stringify(state), { mode: 0o600 })
+    renameSync(file + '.tmp', file)
+  }
+  // 进程重启后的在途事件不自动重放。
+  for (const entry of Object.values(state.events)) if (entry.status === 'processing') entry.status = 'unknown'
+  let active = false
+  let closed = false
+  const handles = new Set()
+  const unregister = ctx.webServer.register({
+    kind: 'exact', path: '/dsh-fish-v3/say',
+    handler: async (req, res) => {
+      const reply = (status, value) => {
+        res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+        res.end(JSON.stringify(value))
+      }
+      const key = typeof token === 'function' ? token() : token
+      const supplied = String(req.headers?.authorization ?? '')
+      const digest = (s) => createHash('sha256').update(s).digest()
+      if (!key || !timingSafeEqual(digest(supplied), digest(`Bearer ${key}`))) return reply(401, { ok: false, error: 'unauthorized' })
+      if (req.method !== 'POST') return reply(405, { ok: false, error: 'method-not-allowed' })
+      let eventKey
+      let ownsSlot = false
+      let agent
+      let timer
       try {
-        const auth = String(request.headers?.authorization ?? request.headers?.Authorization ?? '')
-        if (auth !== `Bearer ${token}`) return writeJson(response, 401, { ok: false, error: 'unauthorized' })
-
-        const body = await readJsonBody(request, 1_000_000)
-        if (!body || typeof body.text !== 'string' || !body.text.trim()) return writeJson(response, 400, { ok: false, error: 'invalid-body' })
-        const text = String(body.text).trim()
-        const scene = body.scene === 'group' ? 'group' : 'private'
-        const channel = String(body.channel ?? '')
-        const speaker = String(body.speaker ?? '')
-        const sk = scene === 'group' ? `qq:group:${channel}` : 'qq:private'
-
-        // 会话映射：live → resume → create
-        let sessionId = sessions[sk]
-        let agent = sessionId ? agents.get(sessionId) : undefined
-        if (!agent && sessionId) {
-          try { agent = (await agents.resume({ resumeSessionId: sessionId, meta: { cwd: dataDir } })).agent } catch { agent = undefined }
+        let bytes = 0
+        const chunks = []
+        for await (const value of req) {
+          const chunk = Buffer.from(value)
+          bytes += chunk.length
+          if (bytes > 16384) return reply(413, { ok: false, error: 'body-too-large' })
+          chunks.push(chunk)
         }
-        if (!agent) {
-          sessionId = `fish-${randomUUID()}`
-          sessions[sk] = sessionId
-          saveSessions()
-          const selection = defaultModel.currentSelection() ?? {}
-          agent = (await agents.create({
-            sessionId,
-            meta: { cwd: dataDir },
-            agentOptions: { ...selection },
-          })).agent
+        let body
+        try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')) } catch { return reply(400, { ok: false, error: 'invalid-json' }) }
+        if (body.mode !== 'simulation') return reply(403, { ok: false, error: 'live-ingress-not-authorized' })
+        for (const field of ['account', 'channel', 'eventId', 'sender', 'text']) {
+          if (typeof body[field] !== 'string' || !body[field].trim() || body[field].length > (field === 'text' ? 4000 : 128)) return reply(400, { ok: false, error: 'invalid-event' })
         }
-
-        await agent.whenIdle()
+        if (!['private', 'group'].includes(body.scene)) return reply(400, { ok: false, error: 'invalid-scene' })
+        const text = sanitizeForeign(body.text)
+        if (looksSecret(text)) return reply(400, { ok: false, error: 'blocked-secret' })
+        const scope = JSON.stringify([body.account, body.scene, body.channel])
+        eventKey = createHash('sha256').update(JSON.stringify([scope, body.eventId])).digest('hex')
+        const previous = state.events[eventKey]
+        if (previous) return reply(previous.status === 'completed' ? 200 : 409, previous.result ?? { ok: false, error: 'outcome-unknown-or-pending' })
+        if (closed || active) return reply(429, { ok: false, error: 'busy' })
+        if (Object.keys(state.events).length >= 1000) return reply(429, { ok: false, error: 'ledger-capacity' })
+        active = true
+        ownsSlot = true
+        state.events[eventKey] = { status: 'processing' }
+        save()
+        let sessionId = state.sessions[scope]
+        const setup = (agentCtx) => {
+          // 诊断 Agent 不具有任何模型工具；避免继承工程能力或未隔离记忆工具。
+          const names = agentCtx.tools.definitions().map((t) => t.name)
+          agentCtx.effect(() => agentCtx.tools.restrict({ deny: names }), 'fish.deny-global-tools')
+          agentCtx.effect(() => agentCtx.tools.guard(() => '诊断会话禁止所有工具'), 'fish.deny-tool-execution')
+        }
+        const options = { agentOptions: { ...models.currentSelection(), maxTokens: 512 }, setup }
+        let handle
+        if (sessionId) handle = await agents.resume({ resumeSessionId: sessionId, ...options })
+        else {
+          sessionId = `fish-sim-${randomUUID()}`
+          const cwd = path.join(dataDir, 'simulation-chat')
+          mkdirSync(cwd, { recursive: true, mode: 0o700 })
+          handle = await agents.create({ sessionId, meta: { cwd }, ...options })
+          state.sessions[scope] = sessionId
+          save()
+        }
+        handles.add(handle)
+        agent = handle.agent
         const firstSeq = agent.session.seq
-        const content = scene === 'group' && speaker ? `${speaker}说：${text}` : text
-        agent.followup({
-          id: randomUUID(),
-          role: 'user',
-          content: [{ type: 'text', text: content }],
-          source: { kind: 'user' },
-        })
-        await agent.whenIdle()
-
-        const out = collectAssistantText(agent.session, firstSeq)
-        writeJson(response, 200, { ok: true, sessionId, response: out })
-      } catch (err) {
-        console.error('[dsh-fish-v3 say] handler error:', err?.stack ?? err)
-        writeJson(response, 500, { ok: false, error: String(err?.message ?? err).slice(0, 200), stack: String(err?.stack ?? '').slice(0, 1200) })
+        agent.followup({ id: randomUUID(), role: 'user', content: [{ type: 'text', text: `[合成${body.scene}消息，发言者：${sanitizeForeign(body.sender)}]\n${text}` }], source: { kind: 'user' } })
+        await Promise.race([
+          agent.whenIdle(),
+          new Promise((_, reject) => { timer = setTimeout(() => { agent.cancel({ kind: 'user' }); reject(new Error('turn-timeout')) }, 60000) }),
+        ])
+        clearTimeout(timer)
+        let response = ''
+        let completed = false
+        for (let seq = firstSeq; seq < agent.session.seq; seq++) {
+          const event = agent.session.eventAt(seq)
+          if (event?.type === 'assistant/message') response = event.data.message.content.filter((b) => b.type === 'text').map((b) => b.text).join('')
+          if (event?.type === 'turn/end') completed = event.data.reason.kind === 'completed'
+        }
+        if (!completed || !response || looksSecret(response)) throw new Error('turn-not-completed')
+        await sessions.flush(agent.session)
+        const result = { ok: true, mode: 'simulation', sessionId, eventId: body.eventId, response, delivered: false }
+        state.events[eventKey] = { status: 'completed', result }
+        save()
+        await handle.dispose()
+        handles.delete(handle)
+        return reply(200, result)
+      } catch {
+        if (eventKey && ownsSlot) { state.events[eventKey] = { status: 'unknown' }; save() }
+        return reply(503, { ok: false, error: 'turn-unavailable', retry: 'manual-reconcile' })
+      } finally {
+        clearTimeout(timer)
+        if (agent?.status === 'running') agent.cancel({ kind: 'user' })
+        if (ownsSlot) active = false
       }
     },
   })
-}
-
-function collectAssistantText(session, firstSeq) {
-  let text = ''
-  const length = session.seq
-  for (let seq = firstSeq; seq < length; seq++) {
-    const event = session.eventAt(seq)
-    if (!event || event.type !== 'assistant/message') continue
-    const joined = (event.data?.message?.content ?? [])
-      .filter((b) => b.type === 'text')
-      .map((b) => b.text)
-      .join('')
-    if (joined) text = joined
+  return async () => {
+    closed = true
+    unregister()
+    for (const handle of handles) {
+      handle.agent.cancel({ kind: 'disposed' })
+      await handle.agent.whenIdle()
+      await sessions.flush(handle.agent.session)
+      await handle.dispose()
+    }
   }
-  return text
-}
-
-function writeJson(response, status, body) {
-  response.writeHead(status, { 'content-type': 'application/json; charset=utf-8' })
-  response.end(JSON.stringify(body))
-}
-
-async function readJsonBody(request, limit) {
-  const chunks = []
-  let total = 0
-  for await (const chunk of request) {
-    total += chunk.length
-    if (total > limit) return null
-    chunks.push(chunk)
-  }
-  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')) } catch { return null }
 }

@@ -19,6 +19,8 @@ function mockCtx() {
     webServer: {
       register: (r) => { registrations.routes.push(r); return () => {} },
     },
+    effect: (fn) => { const off = fn(); return typeof off === 'function' ? off : () => {} },
+    inject: () => ({}),
     get: () => undefined, // 心跳默认关闭不会走到 timer 探测
   }
   return { ctx, registrations }
