@@ -87,6 +87,16 @@ export function createMemory(dataDir) {
 
     async count() { return (await readAll()).length },
     async list() { return readAll() },
+
+    /** 按类型列出（新→旧），limit 截断。 */
+    async listByType(type, opts = {}) {
+      const rows = await readAll()
+      const limit = Math.max(1, Number(opts.limit ?? 50) || 50)
+      return rows
+        .filter((r) => r.type === type)
+        .sort((a, b) => Number(b.ts) - Number(a.ts))
+        .slice(0, limit)
+    },
   }
 }
 
