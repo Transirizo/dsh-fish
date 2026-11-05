@@ -33,8 +33,10 @@ packages/dsh-fish-v3/
 ├── lib/browse.js        受限抓取编排：SSRF + 预算 + 体积 + 重定向逐跳复检 + provenance
 ├── lib/reflect.js       周期性自我整理（确定性，无模型）
 ├── lib/heartbeat.js     自主心跳定时器接线（默认关闭，内部整理不外发）
+├── lib/participation.js 群内参与节奏决策（点名/提问/相关/冷落 + quiet/balanced/active）
 ├── lib/tools.js         fish_status / fish_recall / fish_remember / fish_diary / fish_interest / fish_browse
 ├── lib/health.js        GET /dsh-fish-v3/health 路由
+├── eval/                版本化行为场景 scenarios.json + 评分量表 RUBRIC.md（规格 §17）
 └── locale/ icon.svg
 ```
 
