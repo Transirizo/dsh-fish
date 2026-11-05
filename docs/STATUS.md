@@ -5,7 +5,7 @@
 ## 阶段
 
 - **P0 — 交付完成**（离线 + 真实 DSH 加载验收均达成）。
-- **P1 — 进行中**：日记/兴趣、受控联网、自主心跳、群内参与节奏、行为评测基建已落地；桥接、真实模型评测、provider 路由待做。
+- **P1 — 进行中**：核心能力落地；**独立 profile 部署 + 配置生效已验证**。剩余：真实 QQ 桥接、行为评测（需真实模型会话）。
 - P2：未开始。
 
 ## 真实 DSH 加载验收（PASS，证据）
@@ -49,6 +49,7 @@
 | 打包 | `npm pack --dry-run` | 25 文件 19kB，无密钥/数据 |
 | 真实加载 | `install_bundle` + `Tool.listTools` + `Config.listConfigs` | **PASS** |
 | 真实模型联调 | 子 agent 用 deepseek-v4-pro 调用 fish_* 6 工具 + 记忆读写 | **PASS**（status/remember/recall/diary/interest 全通） |
+| 独立 profile 部署 | `fish-v3` profile 启动 + 健康路由 + 配置覆盖生效 | **PASS**（见 `.agents/notes/2026-11-06-profile-deployment.md`） |
 
 ## 未验证（不得宣称已支持）
 

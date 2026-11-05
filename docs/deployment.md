@@ -1,21 +1,44 @@
 # 部署
 
-> 状态：**计划中**。安装/启用命令需在完成插件实现与审批后回填为「可复现」证据。
+## 独立 profile 部署（已实现并验证）
 
-## 目标
+### 1. 创建 profile
 
-每个用户在自己兼容的 DSH 里安装并启用本插件；不新建独立产品架构。
+```bash
+mkdir -p $DSH_HOME/profiles/fish-v3
+# 写入 package.json / cordis.yml / cordis.patch.yml / pnpm-workspace.yaml
+# package.json:
+#   dependencies: { "dsh-fish-v3": "link:/path/to/packages/dsh-fish-v3" }   # 开发；生产用 file: tarball
+#   dsh.profile.bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-fish-v3"]
+# cordis.patch.yml 至少配默认模型：
+#   - id: agent-default-model
+#     config: { provider: deepseek-official, model: deepseek-v4-pro }
 
-## 路由（计划，映射到 DSH/插件入口）
+dsh plugin --profile fish-v3 install
+```
 
-| 操作 | 行为 | 状态 |
-|---|---|---|
-| 安装 | `plugin_manager` `install_bundle`（target=包目录） | 计划中 |
-| 配置 | 交互式配置 + 校验 + diff 预览，密钥隐藏 | 计划中 |
-| 健康 | `fish_status` 工具 + `GET /dsh-fish-v3/health` | 实现中 |
-| 离线自测 | `fish test --offline`（模拟闭环） | 计划中 |
-| 备份/恢复/迁移/升级/卸载 | 见 `migration.md`、`release.md` | 计划中 |
+### 2. 验证组合
 
-## 默认
+```bash
+dsh --profile fish-v3 --dump-config          # 组合树含 dsh-fish-v3、模型、无旧版
+dsh --profile fish-v3 --dump-config-schema   # 我的 Config 字段已投影（设置页据此生成表单）
+```
 
-首次启动 = 模拟，真实发送/主动发送关闭；显示模拟/只收/直播三态与前置条件。审批走可信管理通道。
+### 3. 启动与健康检查
+
+```bash
+dsh --profile fish-v3 --port 3081 --no-open   # 独立端口，避免与 web profile 的 3080 冲突
+curl http://127.0.0.1:3081/dsh-fish-v3/health  # {"ok":true,...,"groupMode":...,"sendingEnabled":...}
+```
+
+### 4. 配置（设置页）
+
+DSH 从插件的 Config schema **自动生成设置表单**（`SettingsForms` autoGenerate）。用户在
+`http://127.0.0.1:3081/?token=…` 的 Plugins 设置里改 groupMode / sending / proactive / net 等，
+底层写 profile 的 cordis.patch.yml → 插件重载 → 配置生效。
+
+## 状态
+
+- 已实现并验证：独立 profile 创建、启动、健康检查、配置覆盖生效。
+- 生产注意：用 `file:` tarball 替代 `link:`（快照不可变）；端口与默认模型按部署取值。
+- 未验证：浏览器端设置页渲染（机制与 schema 已核实，页面需在浏览器确认）、真实 QQ 桥接。
