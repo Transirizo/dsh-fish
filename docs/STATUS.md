@@ -4,7 +4,9 @@
 
 ## 阶段
 
-- **P0（可靠基础）**：进行中。环境发现 + 工程骨架 + ADR + 插件 v0.1 已完成；安装/激活与离线闭环待做。
+- **P0（可靠基础）— 离线交付已完成**：环境发现、工程骨架、ADR、插件 v0.1、消息契约层、
+  离线模拟闭环、备份/恢复工具与演练，均有可复现证据。
+- **P0 严格验收（真实 DSH 加载/生命周期/消息闭环）— BLOCKED**：需审批 + 独立 profile，见「阻塞」。
 - P1（核心体验）、P2（高级能力）：未开始。
 
 ## 已核实（证据）
@@ -13,34 +15,37 @@
 - profile `web` 已在跑旧版 `dsh-fish` v0.8.8 + `dsh-astrbot-relay` v0.9.8（运行依赖，勿动）。
 - 插件形态：Cordis bundle（`dsh.bundle.patch` + `apply(ctx, config)`）。
 - 关键服务/事件/段顺序：见 `.agents/notes/2026-11-06-env-discovery.md`。
-- 分层 AGENTS.md 加载：根 / `.agents` / `packages/dsh-fish-v3` 三层均已生效（会话上下文回显）。
+- 分层 AGENTS.md 加载：根 / `.agents` / `packages/dsh-fish-v3` 三层均生效。
 
 ## 已交付
 
 - 工程骨架：根 `AGENTS.md`、`README.md`、`docs/INDEX.md`、`.gitignore`、`.agents/AGENTS.md`、
-  `.agents/notes/2026-11-06-env-discovery.md`。
-- `docs/adr/0001-*`（原生 bundle 架构决策）、`docs/plans/p0-foundation.md`、`docs/architecture|development|security|testing|deployment|operations|migration|quickstart|portability|release.md`。
-- **插件 `packages/dsh-fish-v3` v0.1**：身份段 `dafeyu:identity`、策略段 `dafeyu:policy`、Config
-  （schemastery，默认真实发送/主动关闭）、追加式 JSONL 记忆、`guard.js`（消毒+秘密拦截）、健康路由
+  `.agents/notes/2026-11-06-env-discovery.md`、`docs/adr/0001-*`、`docs/plans/p0-foundation.md`、
+  及 architecture/development/security/testing/deployment/operations/migration/quickstart/portability/release。
+- **插件 `packages/dsh-fish-v3` v0.1**：身份段 `dafeyu:identity`、策略段 `dafeyu:policy`、
+  Config（schemastery，默认真实发送/主动关闭）、追加式 JSONL 记忆、`guard.js`、健康路由
   `GET /dsh-fish-v3/health`、工具 `fish_status`/`fish_recall`/`fish_remember`、locale/icon。
-- **消息契约层**：`lib/ingest.js`（入站规范化+会话键+幂等去重）、`lib/delivery.js`（出站授权闸默认拒绝）、
-  `lib/loop.js`（回合处理链）、`lib/backup.js`（备份/隔离恢复/校验）。
-- **测试 44/44 全绿**；**离线模拟闭环 `node sim/offline.mjs` 11/11 通过**（私聊/群聊注入、会话映射、
-  去重、未授权拒绝、密钥拦截、投递授权链、记忆落库）。
-- `npm pack --dry-run`：16 文件、9.8kB，无密钥/数据；测试留在仓库、不进 bundle。
-- Git：`bf38081`（骨架+插件）→ `d9a77fc`（refactor）→ `0599f54`（契约层）→ 后续 loop/backup/sim 提交。
+- **消息契约层**：`lib/ingest.js`、`lib/delivery.js`、`lib/loop.js`。
+- **备份/恢复**：`lib/backup.js` + 可执行 CLI `sim/backup.mjs`（backup/restore/verify，隔离恢复、幂等）。
+- **离线模拟闭环**：`sim/offline.mjs`（`fish test --offline` 语义）。
 
-## 待办（下一步）
+## 验证证据（可复现）
 
-1. 把 `loop` 接到 HTTP 入站路由（`POST /dsh-fish-v3/say` + token 鉴权），形成真正的桥接收口。
-2. 备份/恢复的「隔离恢复演练」脚本（`fish backup/restore` 操作语义的 runnable 入口）。
-3. 安装/激活验收（真实 DSH load + 生命周期 + 消息闭环）—— 仍受审批阻塞。
+| 项 | 命令 | 结果 |
+|---|---|---|
+| 单元测试 | `node --test packages/dsh-fish-v3/test/*.test.mjs` | **44/44 PASS** |
+| 离线闭环 | `node packages/dsh-fish-v3/sim/offline.mjs` | **11/11 PASS**（退出码 0） |
+| 备份演练 | `sim/backup.mjs backup/verify/restore` | 备份→校验→隔离恢复→幂等，**PASS** |
+| 打包 | `npm pack --dry-run` | 16 文件 9.8kB，无密钥/数据 |
 
-## 阻塞
+Git：`bf38081 → d9a77fc → 0599f54 → 6a9e485 → 04618d6`（5 次提交，含证据与文档）。
 
-- **安装/激活验收**：本会话审批已改为「不询问/自动拒绝」，`plugin_manager` 安装类动作 fail-closed；
-  且 `web` profile 与在跑 v0.8.8 共用，直接激活会「两条鱼」并污染本工程会话的系统提示。正确路径是
-  **独立 profile**（或 headless 实例）安装启用，属需要审批的部署动作。→ 记录为 BLOCKED，先做可离线验证部分。
+## 阻塞（具体条件，未变化前不改判）
+
+- **真实 DSH 加载/激活验收**：本会话审批已改为「不询问/自动拒绝」，`plugin_manager` 安装类动作
+  fail-closed；且正确目标应是**独立 profile**（直接装进 `web` 会与在跑 v0.8.8「两条鱼」并污染本工程会话）。
+  → 需审批 + 独立 profile 后，按 `docs/deployment.md`/`docs/quickstart.md` 执行 `install_bundle` 并验证
+  `list_plugins` 无 `failed`、生命周期 hook 被调用、注入私聊/群聊事件走通消息闭环。
 
 ## 未验证（不得宣称已支持）
 
