@@ -5,7 +5,7 @@
  * 注意：webServer.register 的路由**没有任何鉴权**（见 astrbot-relay 注释），
  * 所以这里只返回不含密钥、不含对话正文的摘要。
  */
-import { VERSION } from '../index.js'
+import { VERSION } from './version.js'
 import { redact } from './guard.js'
 
 export function registerHealth(ctx, { memory, config, dataDir }) {

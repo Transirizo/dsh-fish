@@ -13,9 +13,9 @@ import { registerPolicy } from './lib/policy.js'
 import { createMemory } from './lib/memory.js'
 import { registerTools } from './lib/tools.js'
 import { registerHealth } from './lib/health.js'
+import { name, VERSION } from './lib/version.js'
 
-export const name = 'dsh-fish-v3'
-export const VERSION = '3.2.0'
+export { name, VERSION }
 export const inject = ['systemPrompt', 'tools']
 
 /** dataDir：配置 > 环境变量 > <DSH_HOME>/dsh-fish-v3 > 临时目录。 */

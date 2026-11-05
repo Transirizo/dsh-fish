@@ -4,7 +4,7 @@
  * v0.1 三个工具：fish_status（自检）、fish_recall（回忆）、fish_remember（记一条）。
  * 参数用标准 JSON Schema（宿主把 parameters 原样交给 provider，不做 DSL 编译）。
  */
-import { VERSION } from '../index.js'
+import { VERSION } from './version.js'
 import { sanitizeForeign, looksSecret } from './guard.js'
 
 const textOutput = (schema) => ({
