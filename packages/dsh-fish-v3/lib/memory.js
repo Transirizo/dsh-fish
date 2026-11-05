@@ -14,7 +14,7 @@ import path from 'node:path'
 
 const DAY_MS = 86_400_000
 
-export const MEMORY_TYPES = ['fact', 'event', 'opinion', 'interest', 'diary', 'question']
+export const MEMORY_TYPES = ['fact', 'event', 'opinion', 'interest', 'diary', 'question', 'reflection']
 export const MEMORY_SCOPES = ['global', 'private', 'group', 'shared']
 
 /** 查询切词：中文按二字切片补匹配（同旧版 tokensOf 思路）。 */

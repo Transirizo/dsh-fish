@@ -28,7 +28,12 @@ packages/dsh-fish-v3/
 ├── lib/delivery.js      出站投递授权闸：默认拒绝 + allowlist/类别/冷却/日限/停止开关/审计
 ├── lib/loop.js          回合处理链：入站→记忆→模型→记忆写→投递授权（桥接可调用的收口）
 ├── lib/backup.js        备份 / 隔离恢复 / 校验（v0.1 数据 = memory.jsonl）
-├── lib/tools.js         fish_status / fish_recall / fish_remember
+├── lib/net.js           SSRF 校验：URL 解析/凭据/私网/回环/链路本地/云元数据
+├── lib/budget.js        联网预算：查询额度 + 并发槽
+├── lib/browse.js        受限抓取编排：SSRF + 预算 + 体积 + 重定向逐跳复检 + provenance
+├── lib/reflect.js       周期性自我整理（确定性，无模型）
+├── lib/heartbeat.js     自主心跳定时器接线（默认关闭，内部整理不外发）
+├── lib/tools.js         fish_status / fish_recall / fish_remember / fish_diary / fish_interest / fish_browse
 ├── lib/health.js        GET /dsh-fish-v3/health 路由
 └── locale/ icon.svg
 ```

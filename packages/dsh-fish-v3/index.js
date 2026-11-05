@@ -13,6 +13,7 @@ import { registerPolicy } from './lib/policy.js'
 import { createMemory } from './lib/memory.js'
 import { registerTools } from './lib/tools.js'
 import { registerHealth } from './lib/health.js'
+import { startHeartbeat } from './lib/heartbeat.js'
 import { name, VERSION } from './lib/version.js'
 
 export { name, VERSION, Config }
@@ -36,6 +37,12 @@ export function apply(ctx, config = {}) {
     () => registerPolicy(ctx),
     () => registerTools(ctx, { memory, config, dataDir }),
     () => registerHealth(ctx, { memory, config, dataDir }),
+    () => startHeartbeat(ctx, {
+      memory,
+      enabled: config.proactiveEnabled === true,
+      intervalMs: config.proactiveHeartbeatMs,
+      log: (msg) => console.log(msg),
+    }),
   ]
   for (const reg of registrars) {
     try {
