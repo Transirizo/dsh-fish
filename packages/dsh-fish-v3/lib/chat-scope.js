@@ -13,7 +13,8 @@ export function setupChatScope(ctx, agent, { memory, config, dataDir, scope }) {
   ctx.effect(() => ctx.systemPrompt.section({ name: 'deployment:persona-suffix', order: 10200, text: '' }), 'fish.chat-persona-suffix')
   const globalNames = ctx.tools.definitions().map((tool) => tool.name)
   if (globalNames.length) ctx.effect(() => ctx.tools.restrict({ deny: globalNames }), 'fish.chat-global-mask')
-  ctx.effect(() => registerTools(ctx, { memory, config, dataDir, access }), 'fish.chat-memory-tools')
+  const toolContext = { tools: { register: (definition) => CHAT_TOOLS.includes(definition.name) ? ctx.tools.register(definition) : () => {} } }
+  ctx.effect(() => registerTools(toolContext, { memory, config, dataDir, access }), 'fish.chat-memory-tools')
   // scoped工具不受全局mask影响；额外guard覆盖未来新增的工程工具与所有外网工具。
   ctx.effect(() => ctx.tools.guard((exec) => CHAT_TOOLS.includes(exec.name) ? undefined : '聊天会话禁止工程、管理、外网和发送工具'), 'fish.chat-tool-guard')
 }

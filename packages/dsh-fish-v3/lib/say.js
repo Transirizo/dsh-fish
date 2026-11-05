@@ -71,7 +71,10 @@ export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
         state.events[eventKey] = { status: 'processing' }
         save()
         let sessionId = state.sessions[scope]
-        const setup = (agentCtx, subject) => {
+        const setup = async (agentCtx, subject) => {
+          const presets = ctx.agentPresets ?? ctx.get?.('agentPresets')
+          if (!presets?.mount) throw new Error('缺少独立聊天preset服务')
+          await presets.mount(agentCtx, 'fish-chat')
           if (memory) return setupChatScope(agentCtx, subject, { memory, config, dataDir, scope })
           // 无记忆服务的测试上下文禁止全部工具。
           const names = agentCtx.tools.definitions().map((t) => t.name)
@@ -85,7 +88,7 @@ export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
           sessionId = `fish-sim-${randomUUID()}`
           const cwd = path.join(dataDir, 'simulation-chat')
           mkdirSync(cwd, { recursive: true, mode: 0o700 })
-          handle = await agents.create({ sessionId, meta: { cwd }, ...options })
+          handle = await agents.create({ sessionId, meta: { cwd, agentPreset: 'fish-chat' }, ...options })
           state.sessions[scope] = sessionId
           save()
         }

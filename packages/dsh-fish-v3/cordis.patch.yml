@@ -4,3 +4,13 @@
 - insert:
     - id: dsh-fish-v3
       name: dsh-fish-v3
+    - id: preset-fish-chat
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: fish-chat
+        name: 大肥鱼受限聊天
+        description: 仅原生模型工具执行器；身份和会话记忆由可信入站setup安装，无工程工具。
+        order: 40
+        plugins:
+          - id: native-tools
+            name: '@deepseek-ai/dsh-tool-executor-native'

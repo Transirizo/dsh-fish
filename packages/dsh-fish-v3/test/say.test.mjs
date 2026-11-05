@@ -14,7 +14,7 @@ async function fixture() {
   get() {},
   async create(opts) {
    calls++
-   opts.setup({ tools: { definitions: () => [{name:'bash'}], restrict: (f) => { assert.deepEqual(f.deny,['bash']); restrictions++; return () => {} }, guard: () => () => {} }, effect: (f) => f() })
+   await opts.setup({ tools: { definitions: () => [{name:'bash'}], restrict: (f) => { assert.deepEqual(f.deny,['bash']); restrictions++; return () => {} }, guard: () => () => {} }, effect: (f) => f() })
    const events = []
    const agent = { status:'idle', session: { get seq(){return events.length}, eventAt(i){return events[i]} },
     followup() { events.push({type:'assistant/message', data:{message:{content:[{type:'text',text:'合成回复'}]}}}, {type:'turn/end',data:{reason:{kind:'completed'}}}) }, whenIdle: async()=>{}, cancel(){} }
@@ -22,7 +22,7 @@ async function fixture() {
   },
   async resume(opts) { assert.ok(opts.resumeSessionId); return agents.create(opts) },
  }
- const ctx = { agents, agentDefaultModel:{currentSelection:()=>({provider:'fixture',model:'stub'})}, sessions:{flush:async()=>{}}, webServer:{register(r){route=r;return()=>{route=null}}} }
+ const ctx = { agents, agentPresets:{mount:async(_ctx,id)=>{assert.equal(id,'fish-chat')}}, agentDefaultModel:{currentSelection:()=>({provider:'fixture',model:'stub'})}, sessions:{flush:async()=>{}}, webServer:{register(r){route=r;return()=>{route=null}}} }
  const off = registerSay(ctx,{token:()=> 'synthetic-test-token',dataDir:dir})
  return { off, get calls(){return calls}, get restrictions(){return restrictions}, async request(body,token='synthetic-test-token',method='POST') {
   const req=Readable.from([Buffer.from(typeof body==='string'?body:JSON.stringify(body))]); req.method=method; req.headers={authorization:`Bearer ${token}`}

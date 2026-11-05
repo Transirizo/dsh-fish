@@ -15,6 +15,7 @@ test('聊天setup覆盖局部persona、绑定范围并拒绝工程工具',async(
  assert.match(sections[0].text,/大肥鱼/)
  assert.equal(sections[0].name,'deployment:persona-prefix')
  assert.deepEqual(mask.deny,['bash','plugin_manager'])
+ assert.deepEqual(defs.map(d=>d.name).sort(), [...CHAT_TOOLS].sort())
  for(const name of ['bash','write','plugin_manager','fish_browse','schedule_create'])assert.ok(guards[0]({name}))
  for(const name of CHAT_TOOLS)assert.equal(guards[0]({name}),undefined)
  await defs.find(d=>d.name==='fish_remember').execute({text:'合成事实'},{agent})

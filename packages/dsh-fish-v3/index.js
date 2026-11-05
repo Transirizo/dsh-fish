@@ -35,7 +35,7 @@ export function apply(ctx, config = {}) {
   const registrars = [
     () => registerTools(ctx, { memory, config, dataDir }),
     () => registerHealth(ctx, { memory, config, dataDir }),
-    () => ctx.inject(['agents', 'agentDefaultModel', 'sessions'], (host) => {
+    () => ctx.inject(['agents', 'agentDefaultModel', 'sessions', 'agentPresets'], (host) => {
       host.effect(() => registerSay(host, { token: () => read(config, 'ingressToken', ''), dataDir, memory, config }), 'fish.say');
     }),
     () => startHeartbeat(ctx, {
