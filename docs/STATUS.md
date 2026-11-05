@@ -43,7 +43,7 @@
 
 | 项 | 命令 | 结果 |
 |---|---|---|
-| 单元测试 | `node --test packages/dsh-fish-v3/test/*.test.mjs` | **80/80 PASS**（本轮重新执行） |
+| 单元测试 | `node --test packages/dsh-fish-v3/test/*.test.mjs` | **85/85 PASS**（含调用者范围越权与联网默认拒绝回归） |
 | 原生 DSH /say 合成回合 | 私聊、群聊、重复事件、私聊第二轮恢复 | **PASS**；delivered=false，见 [验证报告](say-verification.md) |
 | 离线闭环 | `node packages/dsh-fish-v3/sim/offline.mjs` | **11/11 PASS** |
 | 备份演练 | `sim/backup.mjs backup/verify/restore` | **PASS** |
@@ -62,6 +62,4 @@
 
 ## 下一步
 
-1. 真实平台授权后：QQ 桥接真机、B 站账号、主动发送启用。
-2. 独立 profile 正式部署（把插件从「已安装已停用」转为正式启用）。
-3. 真实模型上的行为评测（用 eval/scenarios.json 跑多轮，需驱动会话）。
+先完成 [安全边界整改](plans/security-boundaries.md)：配置实际生效、可信工具范围、独立聊天身份与受限网络；之后才进入真实平台授权验证。源码新增工具访问控制与联网关闭策略已通过85个单测，但未声称生产进程已加载本轮代码。

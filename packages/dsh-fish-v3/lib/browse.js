@@ -10,7 +10,8 @@
 import { isSafePublicUrl } from './net.js'
 
 export async function browse(rawUrl, opts = {}) {
-  const fetchFn = opts.fetchFn ?? globalThis.fetch
+  const fetchFn = opts.fetchFn
+  if (typeof fetchFn !== 'function') return { ok: false, error: 'restricted-fetch-unavailable' }
   const budget = opts.budget
   const maxBytes = Number(opts.maxBytes ?? 512000)
   const maxRedirects = Number(opts.maxRedirects ?? 5)

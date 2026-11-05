@@ -12,7 +12,8 @@ async function withTools(fn) {
   const defs = []
   const ctx = { tools: { register: (d) => { defs.push(d); return () => {} } } }
   registerTools(ctx, { memory, config: {}, dataDir: dir })
-  const get = (name) => defs.find((d) => d.name === name)
+  const caller = { agent: { id: 'diary-test' } }
+  const get = (name) => { const tool = defs.find((d) => d.name === name); return { execute: (args) => tool.execute(args, caller) } }
   try { await fn(memory, get) } finally { await rm(dir, { recursive: true, force: true }) }
 }
 

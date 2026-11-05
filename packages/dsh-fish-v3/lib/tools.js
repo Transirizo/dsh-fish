@@ -9,6 +9,7 @@ import { sanitizeForeign, looksSecret } from './guard.js'
 import { browse } from './browse.js'
 import { createBudget } from './budget.js'
 import { read } from './config.js'
+import { createToolAccess } from './tool-access.js'
 
 const textOutput = (schema) => ({
   schema: { type: 'object', properties: schema, required: Object.keys(schema), additionalProperties: false },
@@ -23,7 +24,7 @@ function emptyParams() {
  * @param {object} ctx 宿主上下文（inject tools）
  * @returns {() => void} 注销全部工具
  */
-export function registerTools(ctx, { memory, config, dataDir, fetchFn }) {
+export function registerTools(ctx, { memory, config, dataDir, fetchFn, access = createToolAccess() }) {
   const disposers = []
   const budget = createBudget({
     maxQueriesPerWindow: Number(read(config, 'netMaxQueriesPerHour', 30)) || 0,
@@ -36,11 +37,12 @@ export function registerTools(ctx, { memory, config, dataDir, fetchFn }) {
     description: '看一眼大肥鱼自己的状态：跑在哪、记得多少条、群内节奏、真实发送有没有开。',
     parameters: emptyParams(),
     output: textOutput({ ok: { type: 'boolean' }, text: { type: 'string' } }),
-    async execute() {
-      const count = await memory.count()
+    async execute(_args, exec) {
+      const scope = access.scopeOf(exec)
+      if (!scope) return { ok: false, text: '缺少可信调用者会话。' }
+      const count = (await memory.list()).filter((r) => r.scope === scope).length
       const text = [
         `大肥鱼（${VERSION}）`,
-        `数据目录：${dataDir}`,
         `记忆条数：${count}`,
         `群内节奏：${read(config, 'groupMode', 'balanced')}`,
         `真实发送：${read(config, 'sendingEnabled', false) ? '已开' : '关闭（默认）'}`,
@@ -64,14 +66,16 @@ export function registerTools(ctx, { memory, config, dataDir, fetchFn }) {
       additionalProperties: false,
     },
     output: textOutput({ found: { type: 'boolean' }, text: { type: 'string' } }),
-    async execute(args = {}) {
+    async execute(args = {}, exec) {
+      const scope = access.scopeOf(exec)
+      if (!scope) return { found: false, text: '缺少可信调用者会话。' }
       try {
-        const rows = await memory.recall(args.query, { days: args.days, limit: args.limit })
+        const rows = await memory.recall(args.query, { days: args.days, limit: Math.min(20, Math.max(1, Number(args.limit) || 8)), scope })
         if (!rows.length) return { found: false, text: '没翻到相关的事。' }
         const text = rows.map((r) => `[${r.type}/${r.scope}] ${clip(r.text, 200)}`).join('\n')
         return { found: true, text }
       } catch (err) {
-        return { found: false, text: `翻不动：${String(err?.message ?? err).slice(0, 120)}` }
+        return { found: false, text: '记忆读取失败，请联系管理员检查存储。' }
       }
     },
   }))
@@ -83,18 +87,22 @@ export function registerTools(ctx, { memory, config, dataDir, fetchFn }) {
       type: 'object',
       properties: {
         type: { type: 'string', description: '类型：fact | event | opinion | interest | diary | question' },
-        scope: { type: 'string', description: '范围：global | private | group | shared' },
+        scope: { type: 'string', description: '仅可省略或填写当前会话范围；不能扩大到全局或其他会话。' },
         text: { type: 'string', description: '要记下来的那句话。' },
       },
       required: ['text'],
       additionalProperties: false,
     },
     output: textOutput({ ok: { type: 'boolean' }, text: { type: 'string' } }),
-    async execute(args = {}) {
+    async execute(args = {}, exec) {
+      const scope = access.scopeOf(exec)
+      if (!scope) return { ok: false, text: '缺少可信调用者会话。' }
+      if (args.scope !== undefined && args.scope !== scope) return { ok: false, text: '不允许扩大记忆范围。' }
       const text = sanitizeForeign(args.text)
+      if (text.length > 4000) return { ok: false, text: '内容超过4000字限制。' }
       if (!text) return { ok: false, text: '没内容，没记。' }
       if (looksSecret(text)) return { ok: false, text: '这句话看着像秘密，不记。' }
-      const rec = await memory.append({ type: args.type ?? 'fact', scope: args.scope ?? 'global', text })
+      const rec = await memory.append({ type: args.type ?? 'fact', scope, text })
       return { ok: true, text: `记下了（${rec.id}）。` }
     },
   }))
@@ -113,22 +121,24 @@ export function registerTools(ctx, { memory, config, dataDir, fetchFn }) {
       additionalProperties: false,
     },
     output: textOutput({ ok: { type: 'boolean' }, text: { type: 'string' } }),
-    async execute(args = {}) {
+    async execute(args = {}, exec) {
+      const scope = access.scopeOf(exec)
+      if (!scope) return { ok: false, text: '缺少可信调用者会话。' }
       const verb = String(args.verb ?? '')
       if (verb === 'write') {
         const text = sanitizeForeign(args.text)
         if (!text) return { ok: false, text: '没内容，没写。' }
         if (looksSecret(text)) return { ok: false, text: '这句话看着像秘密，不写。' }
-        const rec = await memory.append({ type: 'diary', scope: 'global', text })
+        const rec = await memory.append({ type: 'diary', scope, text })
         return { ok: true, text: `记下了（${rec.id}）。` }
       }
       if (verb === 'list') {
-        const rows = await memory.listByType('diary', { limit: 200 })
+        const rows = await memory.listByType('diary', { limit: 200, scope })
         const dates = [...new Set(rows.map((r) => dateKey(r.ts)))]
         return { ok: true, text: dates.length ? `写过这些天：${dates.join('、')}` : '还没写过日记。' }
       }
       if (verb === 'read') {
-        const rows = await memory.listByType('diary', { limit: 200 })
+        const rows = await memory.listByType('diary', { limit: 200, scope })
         const d = args.date || (rows[0] ? dateKey(rows[0].ts) : '')
         const mine = rows.filter((r) => dateKey(r.ts) === d)
         if (!mine.length) return { ok: true, text: args.date ? `${args.date} 没写日记。` : '最近没写日记。' }
@@ -151,16 +161,19 @@ export function registerTools(ctx, { memory, config, dataDir, fetchFn }) {
       additionalProperties: false,
     },
     output: textOutput({ ok: { type: 'boolean' }, text: { type: 'string' } }),
-    async execute(args = {}) {
+    async execute(args = {}, exec) {
+      const scope = access.scopeOf(exec)
+      if (!scope) return { ok: false, text: '缺少可信调用者会话。' }
       const verb = String(args.verb ?? '')
       if (verb === 'add') {
         const topic = sanitizeForeign(args.topic)
+        if (topic.length > 200 || looksSecret(topic)) return { ok: false, text: '兴趣内容不符合安全限制。' }
         if (!topic) return { ok: false, text: '没内容，没记。' }
-        await memory.append({ type: 'interest', scope: 'global', text: topic })
+        await memory.append({ type: 'interest', scope, text: topic })
         return { ok: true, text: `记下兴趣：${topic}。` }
       }
       if (verb === 'list') {
-        const rows = await memory.listByType('interest', { limit: 100 })
+        const rows = await memory.listByType('interest', { limit: 100, scope })
         if (!rows.length) return { ok: true, text: '还没什么特别上心的事。' }
         const now = Date.now()
         const DAY = 86_400_000
@@ -179,7 +192,7 @@ export function registerTools(ctx, { memory, config, dataDir, fetchFn }) {
 
   disposers.push(ctx.tools.register({
     name: 'fish_browse',
-    description: '抓一个公开网页看看内容。只在需要核对事实、查当前信息、或学新说法时用；会返回来源和抓取时间。受限：只允许公网 http(s) URL，体积与次数有预算。',
+    description: '通过管理员配置的受限代理读取公开网页，返回来源和抓取时间；代理不可用时返回关闭状态。',
     parameters: {
       type: 'object',
       properties: {
@@ -189,7 +202,10 @@ export function registerTools(ctx, { memory, config, dataDir, fetchFn }) {
       additionalProperties: false,
     },
     output: textOutput({ ok: { type: 'boolean' }, text: { type: 'string' } }),
-    async execute(args = {}) {
+    async execute(args = {}, exec) {
+      const scope = access.scopeOf(exec)
+      if (!scope) return { ok: false, text: '缺少可信调用者会话。' }
+      if (!fetchFn) return { ok: false, text: '受限抓取代理尚未配置，联网已关闭。' }
       const r = await browse(String(args.url ?? ''), {
         budget,
         fetchFn,
