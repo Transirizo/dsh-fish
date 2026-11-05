@@ -7,7 +7,7 @@
  * inject 只写核心服务（缺一个整个插件在 import 阶段就被静默跳过）：
  * systemPrompt / tools 是 agent 循环的必需件；webServer 走运行时探测，缺了就降级。
  */
-import { Config } from './lib/config.js'
+import { Config, read } from './lib/config.js'
 import { registerIdentity } from './lib/identity.js'
 import { registerPolicy } from './lib/policy.js'
 import { createMemory } from './lib/memory.js'
@@ -21,7 +21,8 @@ export const inject = ['systemPrompt', 'tools', 'webServer']
 
 /** dataDir：配置 > 环境变量 > <DSH_HOME>/dsh-fish-v3 > 临时目录。 */
 export function resolveDataDir(config = {}) {
-  if (config.dataDir) return config.dataDir
+  const d = read(config, 'dataDir', '')
+  if (d) return d
   if (process.env.DSH_FISH_V3_HOME) return process.env.DSH_FISH_V3_HOME
   const home = process.env.DSH_HOME || (process.env.HOME ? `${process.env.HOME}/.dsh` : '')
   return home ? `${home}/dsh-fish-v3` : '/tmp/dsh-fish-v3'
@@ -39,8 +40,8 @@ export function apply(ctx, config = {}) {
     () => registerHealth(ctx, { memory, config, dataDir }),
     () => startHeartbeat(ctx, {
       memory,
-      enabled: config.proactiveEnabled === true,
-      intervalMs: config.proactiveHeartbeatMs,
+      enabled: read(config, 'proactiveEnabled', false) === true,
+      intervalMs: read(config, 'proactiveHeartbeatMs', 300000),
       log: (msg) => console.log(msg),
     }),
   ]

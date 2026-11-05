@@ -8,6 +8,7 @@ import { VERSION } from './version.js'
 import { sanitizeForeign, looksSecret } from './guard.js'
 import { browse } from './browse.js'
 import { createBudget } from './budget.js'
+import { read } from './config.js'
 
 const textOutput = (schema) => ({
   schema: { type: 'object', properties: schema, required: Object.keys(schema), additionalProperties: false },
@@ -25,9 +26,9 @@ function emptyParams() {
 export function registerTools(ctx, { memory, config, dataDir, fetchFn }) {
   const disposers = []
   const budget = createBudget({
-    maxQueriesPerWindow: Number(config.netMaxQueriesPerHour ?? 30) || 0,
+    maxQueriesPerWindow: Number(read(config, 'netMaxQueriesPerHour', 30)) || 0,
     windowMs: 3600000,
-    maxConcurrent: Number(config.netMaxConcurrent ?? 2) || 0,
+    maxConcurrent: Number(read(config, 'netMaxConcurrent', 2)) || 0,
   })
 
   disposers.push(ctx.tools.register({
@@ -41,9 +42,9 @@ export function registerTools(ctx, { memory, config, dataDir, fetchFn }) {
         `大肥鱼（${VERSION}）`,
         `数据目录：${dataDir}`,
         `记忆条数：${count}`,
-        `群内节奏：${config.groupMode ?? 'balanced'}`,
-        `真实发送：${config.sendingEnabled ? '已开' : '关闭（默认）'}`,
-        `主动参与：${config.proactiveEnabled ? '已开' : '关闭（默认）'}`,
+        `群内节奏：${read(config, 'groupMode', 'balanced')}`,
+        `真实发送：${read(config, 'sendingEnabled', false) ? '已开' : '关闭（默认）'}`,
+        `主动参与：${read(config, 'proactiveEnabled', false) ? '已开' : '关闭（默认）'}`,
       ].join('\n')
       return { ok: true, text }
     },
@@ -192,8 +193,8 @@ export function registerTools(ctx, { memory, config, dataDir, fetchFn }) {
       const r = await browse(String(args.url ?? ''), {
         budget,
         fetchFn,
-        maxBytes: Number(config.netMaxBytes ?? 512000) || 512000,
-        timeoutMs: Number(config.netTimeoutMs ?? 15000) || 15000,
+        maxBytes: Number(read(config, 'netMaxBytes', 512000)) || 512000,
+        timeoutMs: Number(read(config, 'netTimeoutMs', 15000)) || 15000,
       })
       if (!r.ok) return { ok: false, text: `抓不动：${r.error}` }
       const when = new Date(r.retrievedAt).toISOString()

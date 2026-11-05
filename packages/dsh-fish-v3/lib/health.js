@@ -7,6 +7,7 @@
  */
 import { VERSION } from './version.js'
 import { redact } from './guard.js'
+import { read } from './config.js'
 
 export function registerHealth(ctx, { memory, config, dataDir }) {
   // webServer 已在 inject 里声明，apply 时可用
@@ -22,9 +23,9 @@ export function registerHealth(ctx, { memory, config, dataDir }) {
         version: VERSION,
         dataDir: redact(dataDir),
         memoryCount: count,
-        groupMode: config.groupMode ?? 'balanced',
-        sendingEnabled: Boolean(config.sendingEnabled),
-        proactiveEnabled: Boolean(config.proactiveEnabled),
+        groupMode: read(config, 'groupMode', 'balanced'),
+        sendingEnabled: Boolean(read(config, 'sendingEnabled', false)),
+        proactiveEnabled: Boolean(read(config, 'proactiveEnabled', false)),
       }
       response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
       response.end(JSON.stringify(body))

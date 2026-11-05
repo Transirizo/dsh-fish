@@ -2,9 +2,10 @@
  * config.js —— 插件 Config（schemastery）。
  *
  * 只放「生长环境」参数，**不放人格设置**（红线：人格从事件/记忆长出）。
- * 所有键都有默认值；部署取值由用户在自己 profile 的 cordis.patch.yml 里覆盖。
- * 这是规格 §11 的统一管理员配置入口（模型/信息 provider 的接入由宿主 DSH 的 llm 体系负责，
- * 这里只管发送/联网/主动/记忆/节奏/日志/功能开关等陪伴者自身策略）。
+ * 所有键都有默认值；部署取值由用户覆盖。
+ *
+ * 关键：字段链 `.volatile()` 才会被 DSH 设置页自动生成可编辑表单（`volatileForm` 只挑
+ * volatile 字段）；volatile 字段的值是「可变包装」，要用 read() 读。
  */
 import z from '@deepseek-ai/schemastery'
 
@@ -12,43 +13,50 @@ export const GROUP_MODES = ['quiet', 'balanced', 'active']
 
 export const Config = z.object({
   // 身份与目录
-  name: z.string().default('大肥鱼'),
-  dataDir: z.string().default(''),
+  name: z.string().default('大肥鱼').volatile(),
+  dataDir: z.string().default('').volatile(),
 
   // 群内节奏
-  groupMode: z.union(GROUP_MODES.map((m) => z.const(m))).default('balanced'),
+  groupMode: z.union(GROUP_MODES.map((m) => z.const(m))).default('balanced').volatile(),
 
   // 记忆
-  memoryRetentionDays: z.number().default(0),      // 0 = 不自动清理
-  memoryMaxRecords: z.number().default(10000),
+  memoryRetentionDays: z.number().default(0).volatile(),
+  memoryMaxRecords: z.number().default(10000).volatile(),
 
   // 主动参与（默认关闭）
-  proactiveEnabled: z.boolean().default(false),
-  proactiveHeartbeatMs: z.number().default(300000),
-  proactiveMinIdleMs: z.number().default(7200000),
-  proactiveMaxPerDay: z.number().default(2),
+  proactiveEnabled: z.boolean().default(false).volatile(),
+  proactiveHeartbeatMs: z.number().default(300000).volatile(),
+  proactiveMinIdleMs: z.number().default(7200000).volatile(),
+  proactiveMaxPerDay: z.number().default(2).volatile(),
 
   // 发送（默认关闭）
-  sendingEnabled: z.boolean().default(false),
-  sendingAllowlist: z.array(z.string()).default([]),   // 目标 scope 白名单
-  sendingCategories: z.array(z.string()).default(['reply']),
-  sendingCooldownMs: z.number().default(5000),
-  sendingDailyLimit: z.number().default(0),            // 0 = 不限
-  quietHours: z.array(z.number()).default([]),         // [start, end] 小时，如 [23, 7]
+  sendingEnabled: z.boolean().default(false).volatile(),
+  sendingAllowlist: z.array(z.string()).default([]).volatile(),
+  sendingCategories: z.array(z.string()).default(['reply']).volatile(),
+  sendingCooldownMs: z.number().default(5000).volatile(),
+  sendingDailyLimit: z.number().default(0).volatile(),
+  quietHours: z.array(z.number()).default([]).volatile(),
 
   // 联网预算（规格 §5）
-  netMaxQueriesPerHour: z.number().default(30),
-  netMaxConcurrent: z.number().default(2),
-  netMaxBytes: z.number().default(512000),
-  netTimeoutMs: z.number().default(15000),
+  netMaxQueriesPerHour: z.number().default(30).volatile(),
+  netMaxConcurrent: z.number().default(2).volatile(),
+  netMaxBytes: z.number().default(512000).volatile(),
+  netTimeoutMs: z.number().default(15000).volatile(),
 
   // 平台（默认关闭）
-  biliEnabled: z.boolean().default(false),
+  biliEnabled: z.boolean().default(false).volatile(),
 
   // 日志
-  logLevel: z.union([z.const('debug'), z.const('info'), z.const('warn'), z.const('error')]).default('info'),
+  logLevel: z.union([z.const('debug'), z.const('info'), z.const('warn'), z.const('error')]).default('info').volatile(),
 
   // 工具面
-  toolsAllow: z.array(z.string()).default([]),    // 额外放行工具名（只做加法）
-  toolsRestrict: z.boolean().default(true),       // 是否收窄聊天 Agent 工具面
+  toolsAllow: z.array(z.string()).default([]).volatile(),
+  toolsRestrict: z.boolean().default(true).volatile(),
 })
+
+/** 读一个可能是 volatile 包装的配置字段：有 .get() 就解包，否则原值/回退。 */
+export function read(cfg, key, fallback) {
+  const v = cfg?.[key]
+  if (v !== null && typeof v === 'object' && typeof v.get === 'function') return v.get()
+  return v === undefined || v === null ? fallback : v
+}
