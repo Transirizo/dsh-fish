@@ -14,6 +14,7 @@ import { registerHealth } from './lib/health.js'
 import { registerSay } from './lib/say.js'
 import { startHeartbeat } from './lib/heartbeat.js'
 import { name, VERSION } from './lib/version.js'
+import { resolveIngressToken } from './lib/ingress-credentials.js'
 
 export { name, VERSION, Config }
 export const inject = ['systemPrompt', 'tools', 'webServer']
@@ -35,8 +36,8 @@ export function apply(ctx, config = {}) {
   const registrars = [
     () => registerTools(ctx, { memory, config, dataDir }),
     () => registerHealth(ctx, { memory, config, dataDir }),
-    () => ctx.inject(['agents', 'agentDefaultModel', 'sessions', 'agentPresets'], (host) => {
-      host.effect(() => registerSay(host, { token: () => read(config, 'ingressToken', ''), dataDir, memory, config }), 'fish.say');
+    () => ctx.inject(['agents', 'agentDefaultModel', 'sessions', 'agentPresets', 'credentials'], (host) => {
+      host.effect(() => registerSay(host, { token: () => resolveIngressToken(host.credentials, read(config, 'ingressCredentialRef', '')), dataDir, memory, config }), 'fish.say');
     }),
     () => startHeartbeat(ctx, {
       memory,

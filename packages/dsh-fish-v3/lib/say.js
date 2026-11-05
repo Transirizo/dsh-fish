@@ -33,7 +33,7 @@ export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
         res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
         res.end(JSON.stringify(value))
       }
-      const key = typeof token === 'function' ? token() : token
+      const key = typeof token === 'function' ? await token() : token
       const supplied = String(req.headers?.authorization ?? '')
       const digest = (s) => createHash('sha256').update(s).digest()
       if (!key || !timingSafeEqual(digest(supplied), digest(`Bearer ${key}`))) return reply(401, { ok: false, error: 'unauthorized' })

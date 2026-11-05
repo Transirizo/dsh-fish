@@ -37,8 +37,9 @@ export const Config = z.object({
   sendingDailyLimit: z.number().step(1).min(0).max(10000).default(0).volatile(),
   quietHours: z.array(z.number()).default([]).volatile(),
 
-  // 入站桥接收口（token 为空 = 关闭 /say 路由）
-  ingressToken: z.string().default('').role('secret').volatile(),
+  // 原生凭据引用，不接收明文token。旧字段只保留以便管理员受控迁移，不再用于鉴权。
+  ingressCredentialRef: z.string().default('DSH_FISH_INGRESS_TOKEN').volatile(),
+  ingressToken: z.string().default('').role('secret').description('已弃用且不参与鉴权，请通过DSH凭据存储迁移后移除。'),
 
   // 联网预算（规格 §5）
   netMaxQueriesPerHour: z.number().step(1).min(1).max(1000).default(30).volatile(),

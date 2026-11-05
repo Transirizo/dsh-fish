@@ -6,7 +6,8 @@
 |---|---|---|
 | groupMode | 状态显示及独立参与决策模块参数；/say模拟路径不代表真实群节奏已接通 | 状态读取实时；平台行为未接通 |
 | dataDir | 存储根，改变不迁移旧数据 | 非volatile，需插件重载 |
-| ingressToken | /say模拟入口鉴权；secret表单字段 | 每次请求读取；仍需迁移DSH凭据服务 |
+| ingressCredentialRef | 原生DSH凭据引用，限定DSH_FISH_命名空间 | 每次请求重新resolve |
+| ingressToken | 已弃用旧字段，仅为兼容保留，不参与鉴权 | 管理员受控迁移后移除 |
 | sendingEnabled | 真实发送执行链未完成 | 仅允许false，配置不是授权 |
 | proactiveEnabled | 旧反思会跨scope汇总，尚未安全验收 | 仅允许false |
 | biliEnabled | 无已验证平台适配 | 仅允许false |

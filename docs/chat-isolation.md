@@ -17,7 +17,7 @@
 
 ## 未完成的隔离
 
-- 原生fish-chat preset已经声明并在隔离DSH中验证挂载；只含native工具执行器，不含工程插件。日志审计header记录fish-chat，且无非fish工具。五工具呈现白名单的最终审计待下轮复验。见[ADR-0002](adr/0002-scoped-native-chat-preset.md)。
+- 原生fish-chat preset已经声明并在隔离DSH中验证挂载；只含native工具执行器，不含工程插件。日志审计header记录fish-chat，且无非fish工具。最终五工具清单已在原生凭据合成回合日志中实测：fish_diary/interest/recall/remember/status，与预期完全一致。见[ADR-0002](adr/0002-scoped-native-chat-preset.md)。
 - 没有OS用户/容器/文件挂载/网络出口的独立隔离证明。
 - 管理服务及文件接口除模型工具外的访问路径未全面测试。
 - 当前GUI进程可能仍载入早期全局身份代码，需统一受控更新和复验。

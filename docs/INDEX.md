@@ -17,6 +17,7 @@
 - [`testing.md`](testing.md) — 验证与质量门
 - [`security.md`](security.md) — 安全模型与威胁对策
 - [`configuration.md`](configuration.md) — 配置实际支持矩阵与未实现字段限制
+- [`credentials.md`](credentials.md) — 入站原生凭据引用、轮换与迁移限制
 
 ## 交付与运维
 
