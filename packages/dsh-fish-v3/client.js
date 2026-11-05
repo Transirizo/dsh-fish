@@ -65,10 +65,10 @@ window.__ModuleLoader__.load({
     }
 
     function apply(ctx) {
-      ctx.effect(() => ctx.configForms.whileServed([NS], () => ctx.slots.inject('plugins.item', () => ctx.slots.register({
-        name: 'plugins.item',
+      ctx.effect(() => ctx.configForms.whileServed([NS], () => ctx.slots.inject('settings.section', () => ctx.slots.register({
+        name: 'settings.section',
         id: NS,
-        order: 40,
+        order: 46,
         label: () => '大肥鱼',
         inject: () => ({ form: ctx.configForms.get(NS) }),
       }, FishSettings))), 'dsh-fish-v3.settings')
