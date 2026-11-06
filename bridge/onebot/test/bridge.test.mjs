@@ -82,3 +82,21 @@ test('bridge：同一事件重投只处理一次', async () => {
   assert.equal(second.reason, 'duplicate'); assert.equal(says, 1); assert.equal(sent.length, 1)
   assert.equal((await b.handle(privEv({ message_id: 89 }))).action, 'sent')
 })
+
+test('bridge：预填去重集合可恢复（重启后不重复发送）', async () => {
+  // 模拟重启后：从磁盘恢复了 key = private:333:88
+  const seen = new Set(['private:333:88'])
+  const onSeenKeys = []
+  let says = 0
+  const b = createBridge({ selfId: SELF, account: 'a', allowlist: ['private:333'], sayUrl: 'x', sayToken: 't',
+    seen, onSeen: (k) => onSeenKeys.push(k),
+    outbound: { send: async () => ({ sent: true, reason: 'sent' }) },
+    fetchFn: async () => { says++; return { status: 200, json: async () => ({ ok: true, response: 'r' }) } } })
+  // 重投同一条 → 直接 duplicate，不调 /say
+  assert.equal((await b.handle(privEv())).reason, 'duplicate')
+  assert.equal(says, 0)
+  // 新事件 → 记住并回调 onSeen
+  assert.equal((await b.handle(privEv({ message_id: 99 }))).action, 'sent')
+  assert.deepEqual(onSeenKeys, ['private:333:99'])
+  assert.ok(seen.has('private:333:99'))
+})

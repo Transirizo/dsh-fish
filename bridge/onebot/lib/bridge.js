@@ -4,10 +4,10 @@
  */
 import { normalizeEvent, allowed } from './normalize.js'
 
-export function createBridge({ selfId, account, allowlist, sayUrl, sayToken, outbound, fetchFn = globalThis.fetch, log = () => {}, maxSeen = 2000 }) {
+export function createBridge({ selfId, account, allowlist, sayUrl, sayToken, outbound, fetchFn = globalThis.fetch, log = () => {}, maxSeen = 2000, seen = new Set(), onSeen = () => {} }) {
   // 已处理事件（含在途）：NapCat 重投或网络重试不得导致二次发送。有界 FIFO。
-  const seen = new Set()
-  const remember = (key) => { seen.add(key); if (seen.size > maxSeen) seen.delete(seen.values().next().value) }
+  // 传入的 seen 可预填（重启后从磁盘恢复）；onSeen 在每次记住新事件时回调，用于持久化。
+  const remember = (key) => { seen.add(key); if (seen.size > maxSeen) seen.delete(seen.values().next().value); onSeen(key) }
   return {
     async handle(ev) {
       const n = normalizeEvent(ev, { selfId, account })

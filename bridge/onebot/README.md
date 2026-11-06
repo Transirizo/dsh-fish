@@ -34,6 +34,7 @@ NapCat（HTTP API send_*_msg）← 桥（发送闸：开关、冷却、日上限
 | `FISH_INBOUND_SECRET` | 与 NapCat 上报 secret 一致（强烈建议） |
 | `NAPCAT_API` / `NAPCAT_TOKEN` | NapCat HTTP API 地址与 access token |
 | `FISH_SEND_ENABLED` | 只有 `true` 才真实发送，否则只记录 |
+| `FISH_STATE_FILE` | 去重状态文件，默认 `/app/bridge-state.jsonl`；重启后恢复已处理事件，避免重发 |
 
 ```bash
 node bridge/onebot/index.mjs
@@ -42,7 +43,7 @@ node bridge/onebot/index.mjs
 ## 已知限制
 
 - **`/say` 的 `mode:live` 需要 DSH 设置里「真实平台回复」开关打开**，否则返回 403。桥发的就是 `mode:live`；诊断/离线测试仍可用 `mode:simulation`。
-- 去重表在桥内存里，桥重启后靠 `/say` 账本兜底：`/say` 对同一事件返回同一结果，但桥会再发一次。真机前需要把发送记录落盘。
+- 去重状态已落盘（`FISH_STATE_FILE`），桥重启后恢复；NapCat 重投已处理事件不会再发送。
 - 只处理文本段与 @；图片、表情、回复引用被丢弃。
 - 不支持 NapCat 反向 WebSocket，只支持 HTTP 上报 + HTTP API。
 - 单进程串行；`/say` 本身同一时间只处理一个回合，群里消息多时会返回 busy（429），当前直接丢弃不排队。

@@ -13,9 +13,12 @@
  *   NAPCAT_API          NapCat HTTP API 基址，如 http://127.0.0.1:3000
  *   NAPCAT_TOKEN        NapCat access token（可选）
  *   FISH_SEND_ENABLED   只有严格等于 "true" 才真实发送；否则 dry-run
+ *   FISH_STATE_FILE     去重状态文件，默认 /app/bridge-state.jsonl（重启后恢复，避免重发）
  */
 import { createServer } from 'node:http'
 import { createHmac, timingSafeEqual } from 'node:crypto'
+import { readFileSync, appendFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
+import { dirname } from 'node:path'
 import { createBridge } from './lib/bridge.js'
 import { createOutbound } from './lib/outbound.js'
 
@@ -30,10 +33,34 @@ const sendEnabled = env.FISH_SEND_ENABLED === 'true'
 if (sendEnabled && !env.NAPCAT_API) { console.error('FISH_SEND_ENABLED=true 需要 NAPCAT_API'); process.exit(2) }
 
 const outbound = createOutbound({ apiBase: env.NAPCAT_API ?? 'http://invalid', accessToken: env.NAPCAT_TOKEN, sendEnabled })
+
+// 去重状态落盘：重启后从文件恢复已处理事件，避免 NapCat 重投导致重复发送。
+const maxSeen = 2000
+const stateFile = env.FISH_STATE_FILE ?? '/app/bridge-state.jsonl'
+const seen = new Set()
+if (existsSync(stateFile)) {
+  try {
+    const lines = readFileSync(stateFile, 'utf8').split('\n').map((s) => s.trim()).filter(Boolean)
+    for (const k of lines.slice(-maxSeen)) seen.add(k)
+    if (seen.size) console.log(`已加载 ${seen.size} 条去重记录`)
+  } catch (err) { console.error(`读取去重状态失败：${err.message}`) }
+}
+let appends = 0
+const onSeen = (key) => {
+  try {
+    mkdirSync(dirname(stateFile), { recursive: true })
+    appendFileSync(stateFile, key + '\n')
+    appends++
+    // 每 500 条压缩一次：把文件重写为内存里最近 maxSeen 条，保持文件有界。
+    if (appends >= 500) { writeFileSync(stateFile, [...seen].slice(-maxSeen).join('\n') + '\n'); appends = 0 }
+  } catch (err) { console.error(`去重状态落盘失败：${err.message}`) }
+}
+
 const bridge = createBridge({
   selfId, account: env.FISH_ACCOUNT ?? selfId, allowlist,
   sayUrl: env.FISH_SAY_URL ?? 'http://127.0.0.1:3080/dsh-fish-v3/say',
   sayToken, outbound, log: (m) => console.log(m),
+  seen, onSeen,
 })
 
 const ts = () => new Date().toISOString()
