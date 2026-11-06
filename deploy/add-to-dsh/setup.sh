@@ -81,8 +81,11 @@ echo "== 4/6 密钥已生成 =="
 # ---- 5) 打包并安装插件到 DSH，配 /say 凭据 ----
 echo "== 5/6 安装插件到 DSH（装完需重启 DSH 生效）=="
 TGZ="$DATA/dsh-fish-v3.tgz"
-(cd "$REPO/packages/dsh-fish-v3" && tar -czf "$TGZ" --transform='s,^,package/,' \
-  package.json index.js client.js lib cordis.patch.yml locale icon.svg README.md AGENTS.md)
+STAGE="$(mktemp -d)"
+mkdir -p "$STAGE/package"
+(cd "$REPO/packages/dsh-fish-v3" && cp -R package.json index.js client.js lib cordis.patch.yml locale icon.svg README.md AGENTS.md "$STAGE/package/")
+tar -czf "$TGZ" -C "$STAGE" package
+rm -rf "$STAGE"
 [ -s "$TGZ" ] || { echo "错误：打包失败"; exit 1; }
 
 docker cp "$TGZ" "$DSH_CONTAINER:/tmp/dsh-fish-v3.tgz"

@@ -22,8 +22,11 @@ NAP_TOKEN="$(rand 16)"        # NapCat HTTP 服务 token
 
 echo "== 2/5 打包插件（tar，无需 node/npm/网络）=="
 TGZ="$DATA/dsh-fish-v3.tgz"
-(cd "$REPO/packages/dsh-fish-v3" && tar -czf "$TGZ" --transform='s,^,package/,' \
-  package.json index.js client.js lib cordis.patch.yml locale icon.svg README.md AGENTS.md)
+STAGE="$(mktemp -d)"
+mkdir -p "$STAGE/package"
+(cd "$REPO/packages/dsh-fish-v3" && cp -R package.json index.js client.js lib cordis.patch.yml locale icon.svg README.md AGENTS.md "$STAGE/package/")
+tar -czf "$TGZ" -C "$STAGE" package
+rm -rf "$STAGE"
 [ -s "$TGZ" ] || { echo "错误：插件打包失败"; exit 1; }
 
 echo "== 3/5 准备 DSH profile（fish）+ 安装插件 =="
@@ -52,7 +55,7 @@ nodeLinker: hoisted
 autoInstallPeers: false
 EOF
 # 关键：容器里 DSH 以 node(uid 1000) 运行，宿主机 root 建的文件它写不动，先 chown。
-chown -R 1000:1000 "$DATA/dsh"
+chown -R 1000:1000 "$DATA/dsh" 2>/dev/null || true
 docker run --rm -e DSH_HOME=/home/node/.dsh \
   -v "$DATA/dsh:/home/node/.dsh" \
   -v "$TGZ:/pkg.tgz:ro" \
@@ -97,7 +100,7 @@ EOF
 
 echo "== 5/5 启动 =="
 # 第 4 步又写了一批 root 属主文件（凭据/环境/配置），启动前统一 chown 给 node(1000) 与桥。
-chown -R 1000:1000 "$DATA/dsh" "$DATA/bridge-state"
+chown -R 1000:1000 "$DATA/dsh" "$DATA/bridge-state" 2>/dev/null || true
 docker compose -f "$ROOT/docker-compose.yml" up -d
 
 DSH_PORT="${DSH_PORT:-13080}"
