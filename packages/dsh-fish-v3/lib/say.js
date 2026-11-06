@@ -25,6 +25,9 @@ export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
   for (const entry of Object.values(state.events)) if (entry.status === 'processing') entry.status = 'unknown'
   let active = false
   let closed = false
+  let drained = Promise.resolve()
+  let finishDrain
+  const shutdown = new AbortController()
   const handles = new Set()
   let unregister
   try { unregister = ctx.webServer.register({
@@ -76,6 +79,7 @@ export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
         if (closed || active) return reply(429, { ok: false, error: 'busy' })
         if (Object.keys(state.events).length >= 1000) return reply(429, { ok: false, error: 'ledger-capacity' })
         active = true
+        drained = new Promise((resolve) => { finishDrain = resolve })
         ownsSlot = true
         state.events[eventKey] = { status: 'processing', fingerprint }
         save()
@@ -90,7 +94,7 @@ export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
           agentCtx.effect(() => agentCtx.tools.restrict({ deny: names }), 'fish.deny-global-tools')
           agentCtx.effect(() => agentCtx.tools.guard(() => '诊断会话禁止所有工具'), 'fish.deny-tool-execution')
         }
-        const options = { agentOptions: { ...models.currentSelection(), maxTokens: 512 }, setup }
+        const options = { agentOptions: { ...models.currentSelection(), maxTokens: 512 }, setup, signal: shutdown.signal }
         if (sessionId) handle = await agents.resume({ resumeSessionId: sessionId, ...options })
         else {
           sessionId = `fish-sim-${randomUUID()}`
@@ -104,6 +108,7 @@ export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
         }
         handles.add(handle)
         agent = handle.agent
+        if (closed) throw new Error('ingress-closing')
         const firstSeq = agent.session.seq
         agent.followup({ id: randomUUID(), role: 'user', content: [{ type: 'text', text: `[合成${body.scene}消息，发言者：${sanitizeForeign(body.sender)}]\n${text}` }], source: { kind: 'user' } })
         await Promise.race([
@@ -144,19 +149,17 @@ export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
           try { await handle.dispose() } catch { closed = true }
           handles.delete(handle)
         }
-        if (ownsSlot) active = false
+        if (ownsSlot) { active = false; finishDrain?.() }
       }
     },
   }) } catch (err) { releaseLock(); throw err }
   return async () => {
     closed = true
     unregister()
-    for (const handle of handles) {
-      handle.agent.cancel({ kind: 'disposed' })
-      await handle.agent.whenIdle()
-      await sessions.flush(handle.agent.session)
-      await handle.dispose()
-    }
+    shutdown.abort(new Error('ingress-disposed'))
+    for (const handle of handles) handle.agent.cancel({ kind: 'disposed' })
+    // 请求自己负责flush/dispose；必须等finally完成，避免释放锁后仍写账本。
+    await drained
     releaseLock()
   }
 }

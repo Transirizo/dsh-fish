@@ -14,6 +14,7 @@ async function fixture(options = {}) {
   get() {},
   async create(opts) {
    calls++
+   if (options.creationGate) { options.started(); await options.creationGate }
    if (options.fail) throw new Error('synthetic-private-error-do-not-leak')
    await opts.setup({ tools: { definitions: () => [{name:'bash'}], restrict: (f) => { assert.deepEqual(f.deny,['bash']); restrictions++; return () => {} }, guard: () => () => {} }, effect: (f) => f() })
    const events = []
@@ -111,4 +112,27 @@ test('Agent在followup失败后也会释放，不遗留后台句柄',async()=>{
  assert.equal(f.disposed,1)
  await f.off()
  assert.equal(f.disposed,1)
+})
+
+
+test('卸载等待在途创建清理后才释放账本锁',async()=>{
+ let releaseCreation, markStarted
+ const creationGate=new Promise(r=>{releaseCreation=r})
+ const started=new Promise(r=>{markStarted=r})
+ const f=await fixture({creationGate,started:markStarted})
+ const request=f.request(event())
+ await started
+ let unloaded=false
+ const unloading=f.off().then(()=>{unloaded=true})
+ await Promise.resolve()
+ assert.equal(unloaded,false)
+ await assert.rejects(()=>fixture({dir:f.dir}),/EEXIST/)
+ releaseCreation()
+ assert.equal((await request).status,503)
+ await unloading
+ assert.equal(f.disposed,1)
+ const fresh=await fixture({dir:f.dir})
+ assert.equal((await fresh.request(event())).status,409)
+ assert.equal(fresh.calls,0)
+ await fresh.off()
 })
