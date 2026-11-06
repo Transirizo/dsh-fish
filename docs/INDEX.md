@@ -24,7 +24,9 @@
 - [`quickstart.md`](quickstart.md) — 中文快速开始
 - [`deployment.md`](deployment.md) — 部署
 - [`production-preflight.md`](production-preflight.md) — 只读诊断及生产更新前验收边界
-- [`production-qq-wiring.md`](production-qq-wiring.md) — 真实 QQ 接线拓扑与踩坑记录
+- [`production-qq-wiring.md`](production-qq-wiring.md) — 真实 QQ 接线拓扑与踩坑记录（v3 时期）
+- [`upstream-dsh-fish.md`](upstream-dsh-fish.md) — 上游 dsh-fish 接入、#51 补丁、信任栅栏与迁移
+- [`vps-migration.md`](vps-migration.md) — VPS 之间迁移：导什么、怎么导、换机注意
 - [`operations.md`](operations.md) — 运维与健康
 - [`migration.md`](migration.md) — 跨服务器迁移与回滚
 - [`backup-safety.md`](backup-safety.md) — 当前记忆快照安全边界（不是完整迁移）

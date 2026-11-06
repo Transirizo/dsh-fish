@@ -1,19 +1,18 @@
-# 已有 DSH 接入大肥鱼（方案 B）
+# 已有 DSH 接入大肥鱼（上游 `@ssamurias/dsh-fish`）
 
-适用于：**你的 DSH 已经在跑了**，只想补上「大肥鱼插件 + 桥（+ 可选 OneBot 后端配置）」，不想再起一套 DSH。
+适用于：**DSH 已经在跑**，只想补上「上游插件 + 桥（+ 可选 OneBot 配置）」，不想再起一套 DSH。
 
-> 桥说的是 **OneBot v11**，NapCat 只是默认例子；没有 NapCat（或想用 go-cqhttp / Lagrange 等其它 OneBot 实现）也能装插件+起桥，只是暂不发送。
+> 桥说的是 **OneBot v11**，NapCat 只是默认例子；go-cqhttp / Lagrange 等同样可用。
+> 状态：脚本已按 2026-11-06 的迁移流程改写，**未在全新机器完整实测**。
 
-> 状态：首版，未在全新机器实测。命令与字段来自 2026-11-06 生产手动接线的验证结果。
+## 与一键部署的区别
 
-## 与「一键部署」的区别
-
-| | `deploy/one-click/`（方案 A） | `deploy/add-to-dsh/`（方案 B，本目录） |
+| | `deploy/one-click/`（方案 A） | `deploy/add-to-dsh/`（本目录，方案 B） |
 |---|---|---|
 | 前提 | 什么都没有 | DSH 已在跑 |
 | 起几个 DSH | 1 个新的 | 0 个（复用你的） |
-| 桥的网络 | compose 内网，靠容器名 | **host 网络**（才够得到 DSH 回环 + NapCat 容器 IP） |
-| 适合 | 新用户 | 你这种「已有 DSH」 |
+| 桥的网络 | compose 内网，靠容器名 | **host 网络**（够得到 DSH 回环 + NapCat 容器 IP） |
+| 插件来源 | npm 装上游 | 同样 npm 装上游 |
 
 ## 用法
 
@@ -29,60 +28,60 @@ cd deploy/add-to-dsh
   --dsh-container dsh-fish-deepseek-harness-1 \
   --napcat-container napcat \
   --profile web \
-  --dsh-url http://127.0.0.1:3080/dsh-fish-v3/say \
   --napcat-ip 192.168.176.3
 ```
 
-### 在同一台机器上「试跑」而不碰生产
+`--dsh-url` 只在探测不到端口时用，默认已经是 `http://127.0.0.1:<端口>/dsh-fish/say`。
 
-如果这台机器**已经有一套在跑的大肥鱼**，直接跑会抢走桥的容器名和 6199 端口。用独立的名字和端口，就能安全试跑：
+### 在同一台机器上「试跑」而不碰生产
 
 ```bash
 ./setup.sh 3836840356 \
   --dsh-container dsh-clean \
-  --dsh-url http://127.0.0.1:23080/dsh-fish-v3/say \
   --bridge-name dsh-fish-bridge-test \
   --bridge-port 16199
 ```
 
-测试桥不会收到任何上报（NapCat 仍上报给生产的 6199），所以它只是「装插件 + 起一个闲置的桥」用于验证脚本本身。
-
-## 没有 NapCat 也能用
-
-NapCat 不是必需的。没有它时脚本会：
-- 照常装插件、写凭据、起桥；
-- 桥 `FISH_SEND_ENABLED=false`（dry-run），不发送；
-- 不生成 NapCat 配置，改为提示你：在 `data/bridge.env` 填 `NAPCAT_API`/`NAPCAT_TOKEN`、把 `FISH_SEND_ENABLED` 改回 `auto`，再重启桥。
-
-也就是说，**先把「DSH + 插件 + 桥」装好，OneBot 后端随时再接**。
-
 ## 脚本做了什么
 
-1. **自动找 DSH 容器**（名字含 `deepseek-harness`/`dsh`）和它发布到宿主机的 3080 端口，推出 `/say` 地址；
-2. **自动找 NapCat 容器 IP 和它的 docker 网关**；
-3. 生成三个密钥；
-4. `tar` 打包插件 → `docker cp` 进 DSH → `docker exec dsh plugin add` 安装，并把 `dsh-fish-v3` 补进 profile 的 `bundles`；
-5. 把 `/say` 凭据 `DSH_FISH_INGRESS_TOKEN` 写入 DSH 凭据文件（**保留原有其它 refs**）；
-6. 起桥容器（`--network=host`，监听 `0.0.0.0:6199`），`FISH_SEND_ENABLED=auto`；
-7. 生成 NapCat 的 OneBot 配置到 `data/napcat-onebot11_<qq>.json`。
+1. 自动找 DSH 容器、它发布到宿主机的 3080 端口、NapCat 容器 IP 与网关；
+2. 生成 NapCat 上报签名（`FISH_INBOUND_SECRET`）和 NapCat HTTP 服务 token；
+3. **摘掉旧版**：把 `dsh-fish-v3` 从 profile 的 `dependencies` / `bundles` / `cordis.patch.yml`
+   覆盖行里摘掉（不删 `node_modules`、不删数据；改前留 `.bak-<时间>`）；
+4. **装上游**：`dsh plugin --profile <profile> add @ssamurias/dsh-fish`（已有则跳过）；
+5. **打补丁**：`scripts/patch-dsh-fish-say.mjs` 给上游 `lib/say.js` 打 issue #51 补丁；
+6. **重启 DSH**，等它写出 `client-connection/browser-session` 密钥；
+7. 用 `scripts/read-dsh-secret.mjs` 取这个密钥；
+8. 写桥的 `data/bridge.env`（`FISH_PROTOCOL=dsh-fish`、`FISH_SAY_URL=http://127.0.0.1:<端口>/dsh-fish/say`、
+   `FISH_DSH_SECRET=…`、`FISH_SEND_ENABLED=true`），起 host 网络的桥；
+9. 生成 NapCat 的 OneBot 配置到 `data/napcat-onebot11_<qq>.json`。
+
+> 第 3 步很关键：旧版 v3 的依赖是 `file:/pkg.tgz`，那个包在镜像里已经不存在；
+> 不先摘掉，`dsh plugin add` 的 pnpm 会直接报 `ENOENT /pkg.tgz`。
 
 ## 脚本没做（需要你手动确认）
 
-因为动别人的 NapCat 有风险，**脚本只生成配置、不直接改你的 NapCat**：
-
-1. 把 `data/napcat-onebot11_<qq>.json` 替换进 NapCat 容器（路径按你的版本，常见 `/app/napcat/config/onebot11_<qq>.json`）；
-2. `docker restart <napcat容器>`；
-3. `docker restart <DSH容器>` 让插件生效；
-4. 打开 DSH 设置页勾「真实平台回复」——桥 `auto` 会跟随。
+1. 把 `data/napcat-onebot11_<qq>.json` 替换进 NapCat 容器（路径按你的版本，常见
+   `/app/napcat/config/onebot11_<qq>.json`），然后 `docker restart <napcat容器>`；
+2. 打开 DSH 设置页确认插件在（`设置 → 大肥鱼`）；
+3. 给机器人发一条私聊，桥日志应出现 `协议：dsh-fish → 收到上报 → sent`。
 
 ## 已知限制
 
-- 桥用 `--network=host`，默认假设 DSH 和 NapCat 都在这台宿主机上；跨机部署需要自己改 `FISH_SAY_URL` / `NAPCAT_API`。
-- 装插件后会**重启一次 DSH**（这是让新插件加载的必要动作），期间 GUI 会断几秒。
-- NapCat 的 OneBot 配置字段有版本差异（`enableCors`/`enableWebsocket`/`secret` 等），真机若不通，对照你 NapCat 现成配置改一两个字段。
+- 桥用 `--network=host`，默认假设 DSH 和 NapCat 都在这台宿主机上；跨机要自己改
+  `FISH_SAY_URL` / `NAPCAT_API`。
+- 安装/迁移会**重启一次 DSH**，GUI 断几秒。
+- 上游 0.9.1 的 `/say` 回话依赖 issue #51 补丁；升级上游后先看新版是否已修复。
+- 如果 DSH 的 home 是**命名卷**（不是宿主机目录），脚本读不到 `sessions/`，会退化到
+  `FISH_DSH_REPLY=api`（有 say 补丁时没问题）；能拿到 host 路径时会挂 `:/dsh-home:ro`
+  并启用 `session` 兜底。
+- **持久化**：上游默认把她的家放在 DSH 容器的 `$HOME/.dsh-fish`。很多镜像 `HOME=/workspace`，
+  而 `/workspace` 如果没有挂卷，容器重建就会丢。请把 `/workspace`（或 `$HOME`）挂成卷，
+  或者在 profile 的 `cordis.patch.yml` 给 `dsh-fish` 配一个在卷上的 `root`。
 
 ## 数据目录
 
-- `data/bridge.env` — 桥环境（含密钥，gitignored）
+- `data/bridge.env` — 桥环境（含 `FISH_DSH_SECRET`，权限 600）
 - `data/bridge-state/` — 桥去重状态
 - `data/napcat-onebot11_<qq>.json` — 待你替换进 NapCat 的配置
+- `data/migration-backup-*`（迁移时）— profile 与 bridge.env 的备份

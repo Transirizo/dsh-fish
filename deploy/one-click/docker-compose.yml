@@ -10,9 +10,13 @@ services:
       DSH_HOME: /home/node/.dsh
     volumes:
       - ./data/dsh:/home/node/.dsh            # profile + 凭据 + 运行数据
+      - ./data/workspace:/workspace            # 整个工作区落盘（含 .dsh-fish）
+      - ../../:/workspace/create/dsh-fish      # 项目代码，跟宿主机同一份
     ports:
-      - "${DSH_PORT:-13080}:3080"                # 宿主端口可配；默认 13080 避开线上 3080
-    command: ["web", "--no-open"]               # 必须是 web：镜像的 web relay 只在 web 这个 profile 下启动
+      - "127.0.0.1:${DSH_PORT:-13080}:3080"      # 只绑回环；远程用 SSH 隧道，别暴露公网
+    # --trusted-host dsh：桥若用容器名 dsh:3080 接上游 dsh-fish 的 /dsh-fish/*，
+    # 这个 Host 必须写进信任栅栏，否则 403；走 127.0.0.1 访问则用不到。
+    command: ["web", "--no-open", "--trusted-host", "dsh"]
     networks: [fishnet]
 
   napcat:
@@ -22,7 +26,7 @@ services:
       - ./data/napcat/config:/app/napcat/config # onebot11_<qq>.json（setup.sh 生成）
       - ./data/napcat/qq:/app/napcat/qq         # QQ 登录态，重启不丢
     ports:
-      - "${NAPCAT_WEB_PORT:-16099}:6099"        # 宿主端口可配；默认 16099 避开线上 6099
+      - "127.0.0.1:${NAPCAT_WEB_PORT:-16099}:6099"  # 只绑回环；扫码也走 SSH 隧道
     networks: [fishnet]
 
   bridge:
@@ -35,6 +39,7 @@ services:
     volumes:
       - ../../bridge/onebot:/app:ro            # 桥代码（只读）
       - ./data/bridge-state:/state             # 去重状态落盘（可写）
+      - ./data/dsh:/dsh-home:ro                # 上游 dsh-fish：读签名密钥与 sessions/（v3 模式用不到）
     depends_on:
       - dsh
       - napcat

@@ -27,6 +27,13 @@ export function normalizeEvent(ev, { selfId, account }) {
   const sender = String(ev.sender?.card || ev.sender?.nickname || ev.user_id).slice(0, 64)
   return {
     target: { scene, id: channel },
+    // 协议无关的字段：v3 与上游 dsh-fish 的适配器各取所需。
+    eventId: String(ev.message_id),
+    userId: String(ev.user_id),
+    sender,
+    text: text.slice(0, 4000),
+    mentioned,
+    groupName: scene === 'group' ? String(ev.group_name ?? '').replace(/[\r\n]+/g, ' ').trim().slice(0, 64) : '',
     body: {
       mode: 'live',
       account: String(account),

@@ -1,4 +1,7 @@
-# 真实 QQ 接线记录（2026-11-06）
+# 真实 QQ 接线记录（2026-11-06，v3 时期）
+
+> 这是切换到上游 `@ssamurias/dsh-fish` 之前的接线记录。当前部署与迁移见
+> [`upstream-dsh-fish.md`](upstream-dsh-fish.md) 和 `deploy/one-click/README.md`。
 
 生产 VPS（`ns552112`）上已把大肥鱼接入真实 QQ，私聊真发验证通过。本文记录实际拓扑与接线，**不含任何密钥/token**。
 
