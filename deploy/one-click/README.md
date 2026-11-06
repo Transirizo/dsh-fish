@@ -48,3 +48,22 @@ QQ ← NapCat(httpServers :3000) ← 桥（send_private_msg / send_group_msg）
 
 - 线上是「已有 DSH 不能动」的补丁式接线（桥用 `--network=host`、NapCat 走网关 IP）。这里全新部署改用**同一 compose 网络 + 容器名**，更干净，不需要 host 网络。
 - 线上 NapCat 配置在 `/app/napcat/config/onebot11_<qq>.json`，本脚本按同样格式生成，但字段（`enableCors`/`enableWebsocket`/`secret` 等）建议真机核对一遍 NapCat 版本差异。
+
+## 已知问题：新版 NapCat 不发上报签名
+
+新版 `mlikiowa/napcat-docker:latest` 的 httpClients 即使填了 `secret`，也可能**不发** `x-signature` 头，桥日志会报：
+
+```
+上报签名校验失败（secret 不匹配或未填）：收到 0 字节签名，期望 45 字节
+```
+
+**临时解法**（本地/内网可用）：
+
+```bash
+perl -pi -e 's/^FISH_INBOUND_SECRET=.*/FISH_INBOUND_SECRET=/' data/bridge.env
+docker compose up -d --force-recreate bridge
+```
+
+桥只监听 compose 内网，不暴露公网时，关签名可以接受；**要暴露公网必须把签名修好**（确认该版本 httpClients 的实际签名字段名，改模板）。
+
+（2026-11-06 实测：较旧 NapCat 用 `secret` 能正常签名；新版不签。）
