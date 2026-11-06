@@ -136,3 +136,12 @@ test('卸载等待在途创建清理后才释放账本锁',async()=>{
  assert.equal(fresh.calls,0)
  await fresh.off()
 })
+
+test('群聊未点名沉默且不调模型，点名才回复',async()=>{
+ const f=await fixture()
+ const quiet=await f.request(event({scene:'group',eventId:'g-quiet'}))
+ assert.equal(quiet.status,200); assert.equal(quiet.value.silent,true); assert.equal(f.calls,0)
+ const spoken=await f.request(event({scene:'group',eventId:'g-mention',mentioned:true}))
+ assert.equal(spoken.status,200); assert.equal(spoken.value.response,'合成回复'); assert.equal(f.calls,1)
+ await f.off()
+})

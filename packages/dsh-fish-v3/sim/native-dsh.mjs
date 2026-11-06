@@ -35,8 +35,10 @@ try {
  check('真实DSH模型回合',first.status===200&&first.result.response.length>0&&first.result.delivered===false)
  check('重复事件不重跑',JSON.stringify(await send(body))===JSON.stringify(first))
  check('内容冲突拒绝',(await send({...body,text:'替换内容'})).status===409)
- const group=await send({...body,scene:'group',channel:'group',eventId:'native-group'})
- check('群聊会话隔离',group.status===200&&group.result.sessionId!==first.result.sessionId)
+ const quiet=await send({...body,scene:'group',channel:'group',eventId:'native-group-quiet',text:'大家早上好'})
+ check('群聊未点名沉默不调模型',quiet.status===200&&quiet.result.silent===true&&!quiet.result.sessionId)
+ const group=await send({...body,scene:'group',channel:'group',eventId:'native-group',mentioned:true})
+ check('群聊点名回复且会话隔离',group.status===200&&group.result.response.length>0&&group.result.sessionId!==first.result.sessionId)
  const ledger=JSON.parse(await readFile(path.join(state,'say-ledger-v1.json'),'utf8'))
  check('账本持久完成',Object.values(ledger.events).filter(e=>e.status==='completed').length===2)
  ok=true

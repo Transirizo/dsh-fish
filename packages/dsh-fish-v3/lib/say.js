@@ -5,6 +5,8 @@ import path from 'node:path'
 import { sanitizeForeign, looksSecret } from './guard.js'
 import { setupChatScope } from './chat-scope.js'
 import { acquireLedgerLock, writeLedger } from './ledger-storage.js'
+import { decide } from './participation.js'
+import { read } from './config.js'
 
 export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
   const agents = ctx.agents ?? ctx.get?.('agents')
@@ -75,6 +77,13 @@ export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
         if (previous) {
           if (previous.fingerprint !== fingerprint) return reply(409, { ok: false, error: 'event-id-content-conflict' })
           return reply(previous.status === 'completed' ? 200 : 409, previous.result ?? { ok: false, error: 'outcome-unknown-or-pending' })
+        }
+        // 群聊节奏闸（模型外）：未点名/未提问时沉默，不调模型、不占会话。私聊恒回复。
+        if (body.scene === 'group') {
+          const mentioned = body.mentioned === true
+          const directQuestion = mentioned && /[?？]\s*$/.test(text)
+          const d = decide({ mentioned, directQuestion, relevant: mentioned }, read(config, 'groupMode', 'balanced'))
+          if (!d.shouldReply) return reply(200, { ok: true, mode: 'simulation', eventId: body.eventId, silent: true, reason: d.reason, response: '', delivered: false })
         }
         if (closed || active) return reply(429, { ok: false, error: 'busy' })
         if (Object.keys(state.events).length >= 1000) return reply(429, { ok: false, error: 'ledger-capacity' })
