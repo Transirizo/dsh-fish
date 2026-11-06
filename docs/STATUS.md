@@ -43,7 +43,7 @@
 
 | 项 | 命令 | 结果 |
 |---|---|---|
-| 单元测试 | `node --test packages/dsh-fish-v3/test/*.test.mjs` | **98/98 PASS**（新增内容冲突、失败挂起、重启去重与JSON形状回归） |
+| 单元测试 | `node --test packages/dsh-fish-v3/test/*.test.mjs` | **103/103 PASS**（新增快照路径、损坏、已有目标、符号链接及版本拒绝回归） |
 | 原生 DSH /say 合成回合 | 私聊、群聊、重复事件、私聊第二轮恢复 | **PASS**；delivered=false，见 [验证报告](say-verification.md) |
 | 离线闭环 | `node packages/dsh-fish-v3/sim/offline.mjs` | **11/11 PASS** |
 | 备份演练 | `sim/backup.mjs backup/verify/restore` | **PASS** |

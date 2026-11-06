@@ -25,6 +25,7 @@
 - [`deployment.md`](deployment.md) — 部署
 - [`operations.md`](operations.md) — 运维与健康
 - [`migration.md`](migration.md) — 跨服务器迁移与回滚
+- [`backup-safety.md`](backup-safety.md) — 当前记忆快照安全边界（不是完整迁移）
 - [`portability.md`](portability.md) — 可移植性与支持矩阵
 - [`release.md`](release.md) — 发布与升级
 
