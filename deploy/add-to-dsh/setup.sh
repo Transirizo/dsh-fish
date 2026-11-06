@@ -149,6 +149,7 @@ docker run -d --restart=unless-stopped --name "$BRIDGE_NAME" \
   --network=host --user 0:0 \
   -v "$REPO/bridge/onebot:/app:ro" \
   -v "$DATA/bridge-state:/state" \
+  -w /app \
   --env-file "$DATA/bridge.env" \
   --entrypoint node "$IMAGE" index.mjs
 

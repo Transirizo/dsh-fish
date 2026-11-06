@@ -30,6 +30,7 @@ services:
     restart: unless-stopped
     entrypoint: ["node"]
     command: ["index.mjs"]
+    working_dir: /app                          # 桥代码挂到 /app，工作目录必须对上
     env_file: ./data/bridge.env                # setup.sh 生成（含密钥）
     volumes:
       - ../../bridge/onebot:/app:ro            # 桥代码（只读）
