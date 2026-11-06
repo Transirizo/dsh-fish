@@ -51,6 +51,8 @@ packages:
 nodeLinker: hoisted
 autoInstallPeers: false
 EOF
+# 关键：容器里 DSH 以 node(uid 1000) 运行，宿主机 root 建的文件它写不动，先 chown。
+chown -R 1000:1000 "$DATA/dsh"
 docker run --rm -e DSH_HOME=/home/node/.dsh \
   -v "$DATA/dsh:/home/node/.dsh" \
   -v "$TGZ:/pkg.tgz:ro" \
@@ -94,6 +96,8 @@ cat > "$DATA/napcat/config/onebot11_${QQ}.json" <<EOF
 EOF
 
 echo "== 5/5 启动 =="
+# 第 4 步又写了一批 root 属主文件（凭据/环境/配置），启动前统一 chown 给 node(1000) 与桥。
+chown -R 1000:1000 "$DATA/dsh" "$DATA/bridge-state"
 docker compose -f "$ROOT/docker-compose.yml" up -d
 
 echo
