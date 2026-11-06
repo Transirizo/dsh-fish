@@ -33,12 +33,14 @@ export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
         res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
         res.end(JSON.stringify(value))
       }
-      const key = typeof token === 'function' ? await token() : token
+      let key
+      try { key = typeof token === 'function' ? await token() : token } catch { return reply(401, { ok: false, error: 'unauthorized' }) }
       const supplied = String(req.headers?.authorization ?? '')
       const digest = (s) => createHash('sha256').update(s).digest()
       if (!key || !timingSafeEqual(digest(supplied), digest(`Bearer ${key}`))) return reply(401, { ok: false, error: 'unauthorized' })
       if (req.method !== 'POST') return reply(405, { ok: false, error: 'method-not-allowed' })
       let eventKey
+      let fingerprint
       let ownsSlot = false
       let agent
       let timer
@@ -53,6 +55,7 @@ export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
         }
         let body
         try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')) } catch { return reply(400, { ok: false, error: 'invalid-json' }) }
+        if (!body || typeof body !== 'object' || Array.isArray(body)) return reply(400, { ok: false, error: 'invalid-event' })
         if (body.mode !== 'simulation') return reply(403, { ok: false, error: 'live-ingress-not-authorized' })
         for (const field of ['account', 'channel', 'eventId', 'sender', 'text']) {
           if (typeof body[field] !== 'string' || !body[field].trim() || body[field].length > (field === 'text' ? 4000 : 128)) return reply(400, { ok: false, error: 'invalid-event' })
@@ -62,13 +65,17 @@ export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
         if (looksSecret(text)) return reply(400, { ok: false, error: 'blocked-secret' })
         const scope = JSON.stringify([body.account, body.scene, body.channel])
         eventKey = createHash('sha256').update(JSON.stringify([scope, body.eventId])).digest('hex')
+        fingerprint = createHash('sha256').update(JSON.stringify([scope, body.eventId, body.sender, body.text])).digest('hex')
         const previous = state.events[eventKey]
-        if (previous) return reply(previous.status === 'completed' ? 200 : 409, previous.result ?? { ok: false, error: 'outcome-unknown-or-pending' })
+        if (previous) {
+          if (previous.fingerprint !== fingerprint) return reply(409, { ok: false, error: 'event-id-content-conflict' })
+          return reply(previous.status === 'completed' ? 200 : 409, previous.result ?? { ok: false, error: 'outcome-unknown-or-pending' })
+        }
         if (closed || active) return reply(429, { ok: false, error: 'busy' })
         if (Object.keys(state.events).length >= 1000) return reply(429, { ok: false, error: 'ledger-capacity' })
         active = true
         ownsSlot = true
-        state.events[eventKey] = { status: 'processing' }
+        state.events[eventKey] = { status: 'processing', fingerprint }
         save()
         let sessionId = state.sessions[scope]
         const setup = async (agentCtx, subject) => {
@@ -111,13 +118,13 @@ export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
         if (!completed || !response || looksSecret(response)) throw new Error('turn-not-completed')
         await sessions.flush(agent.session)
         const result = { ok: true, mode: 'simulation', sessionId, eventId: body.eventId, response, delivered: false }
-        state.events[eventKey] = { status: 'completed', result }
+        state.events[eventKey] = { status: 'completed', fingerprint, result }
         save()
         await handle.dispose()
         handles.delete(handle)
         return reply(200, result)
       } catch {
-        if (eventKey && ownsSlot) { state.events[eventKey] = { status: 'unknown' }; save() }
+        if (eventKey && ownsSlot) { state.events[eventKey] = { status: 'unknown', fingerprint }; save() }
         return reply(503, { ok: false, error: 'turn-unavailable', retry: 'manual-reconcile' })
       } finally {
         clearTimeout(timer)

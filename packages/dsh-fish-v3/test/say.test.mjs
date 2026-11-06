@@ -7,13 +7,14 @@ import { registerSay } from '../lib/say.js'
 
 await mkdir(path.resolve('data/test-say'), { recursive: true })
 const event = (over = {}) => ({ mode: 'simulation', account: 'fixture', channel: 'one', scene: 'private', eventId: 'ev-1', sender: '合成人物', text: '你好', ...over })
-async function fixture() {
- const dir = await mkdtemp(path.resolve('data/test-say/case-'))
+async function fixture(options = {}) {
+ const dir = options.dir ?? await mkdtemp(path.resolve('data/test-say/case-'))
  let route, calls = 0, restrictions = 0
  const agents = {
   get() {},
   async create(opts) {
    calls++
+   if (options.fail) throw new Error('synthetic-private-error-do-not-leak')
    await opts.setup({ tools: { definitions: () => [{name:'bash'}], restrict: (f) => { assert.deepEqual(f.deny,['bash']); restrictions++; return () => {} }, guard: () => () => {} }, effect: (f) => f() })
    const events = []
    const agent = { status:'idle', session: { get seq(){return events.length}, eventAt(i){return events[i]} },
@@ -24,7 +25,7 @@ async function fixture() {
  }
  const ctx = { agents, agentPresets:{mount:async(_ctx,id)=>{assert.equal(id,'fish-chat')}}, agentDefaultModel:{currentSelection:()=>({provider:'fixture',model:'stub'})}, sessions:{flush:async()=>{}}, webServer:{register(r){route=r;return()=>{route=null}}} }
  const off = registerSay(ctx,{token:()=> 'synthetic-test-token',dataDir:dir})
- return { off, get calls(){return calls}, get restrictions(){return restrictions}, async request(body,token='synthetic-test-token',method='POST') {
+ return { off, dir, get calls(){return calls}, get restrictions(){return restrictions}, async request(body,token='synthetic-test-token',method='POST') {
   const req=Readable.from([Buffer.from(typeof body==='string'?body:JSON.stringify(body))]); req.method=method; req.headers={authorization:`Bearer ${token}`}
   let status, value; await route.handler(req,{writeHead(s){status=s},end(t){value=JSON.parse(t)}}); return {status,value}
  } }
@@ -48,5 +49,46 @@ test('say drives native handle, denies tools, persists duplicate outcome',async(
  const one=await f.request(event()); const two=await f.request(event())
  assert.equal(one.status,200); assert.equal(one.value.delivered,false)
  assert.deepEqual(two,one); assert.equal(f.calls,1); assert.equal(f.restrictions,1)
+ await f.off()
+})
+
+
+test('相同事件ID内容变化返回409，不重新驱动模型',async()=>{
+ const f=await fixture()
+ await f.request(event())
+ const conflict=await f.request(event({text:'被替换的内容'}))
+ assert.equal(conflict.status,409)
+ assert.equal(conflict.value.error,'event-id-content-conflict')
+ assert.equal(f.calls,1)
+ await f.off()
+})
+test('失败挂起且重试不重复执行，不泄漏内部错误',async()=>{
+ const f=await fixture({fail:true})
+ const failure=await f.request(event())
+ assert.equal(failure.status,503)
+ assert.doesNotMatch(JSON.stringify(failure),/synthetic-private-error/)
+ assert.equal((await f.request(event())).status,409)
+ assert.equal(f.calls,1)
+ await f.off()
+ const restarted=await fixture({dir:f.dir})
+ assert.equal((await restarted.request(event())).status,409)
+ assert.equal(restarted.calls,0)
+ await restarted.off()
+})
+test('成功结果重启后仍去重，账号作用域独立',async()=>{
+ const f=await fixture()
+ const first=await f.request(event())
+ await f.off()
+ const restarted=await fixture({dir:f.dir})
+ assert.deepEqual(await restarted.request(event()),first)
+ assert.equal(restarted.calls,0)
+ assert.equal((await restarted.request(event({account:'another-fixture'}))).status,200)
+ assert.equal(restarted.calls,1)
+ await restarted.off()
+})
+test('null及数组请求安全拒绝',async()=>{
+ const f=await fixture()
+ for(const body of [null,[],42]) assert.equal((await f.request(body)).status,400)
+ assert.equal(f.calls,0)
  await f.off()
 })
