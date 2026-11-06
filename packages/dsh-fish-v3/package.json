@@ -1,6 +1,6 @@
 {
   "name": "dsh-fish-v3",
-  "version": "3.2.2",
+  "version": "3.2.3",
   "description": "大肥鱼 Da Fei Yu — 原生 DSH 陪伴者插件：稳定身份、会话策略、持久记忆、健康检查。",
   "private": true,
   "type": "module",

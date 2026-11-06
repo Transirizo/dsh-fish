@@ -3,9 +3,9 @@ import assert from 'node:assert/strict'
 import {inspectConfig,inspectRuntime} from '../lib/preflight.js'
 test('配置诊断不回显秘密或schema内部错误',()=>{
  const secret='synthetic-do-not-output-secret'
- const out=inspectConfig({sendingEnabled:true,ingressToken:secret,netMaxConcurrent:-1})
+ const out=inspectConfig({biliEnabled:true,ingressToken:secret,netMaxConcurrent:-1})
  assert.equal(out.ok,false)
- assert.deepEqual(out.invalidFields,['sendingEnabled','netMaxConcurrent'])
+ assert.deepEqual(out.invalidFields,['biliEnabled','netMaxConcurrent'])
  assert.ok(!JSON.stringify(out).includes(secret))
  assert.ok(out.warnings.length>0)
 })

@@ -27,7 +27,7 @@ NapCat（HTTP API send_*_msg）← 桥（发送闸：开关、冷却、日上限
 | 变量 | 说明 |
 |---|---|
 | `FISH_SELF_ID` | 机器人 QQ 号 |
-| `FISH_ALLOWLIST` | `private:QQ号,group:群号`，逗号分隔；空 = 全部拒绝 |
+| `FISH_ALLOWLIST` | `private:QQ号,group:群号`，逗号分隔；**不设置＝信任 NapCat 已过滤（全放行）**；设了才过滤 |
 | `FISH_SAY_TOKEN` | 与 DSH 凭据 `DSH_FISH_INGRESS_TOKEN` 相同（≥32 字节） |
 | `FISH_SAY_URL` | 默认 `http://127.0.0.1:3080/dsh-fish-v3/say` |
 | `FISH_LISTEN` | 默认 `127.0.0.1:6199`，填到 NapCat 的 HTTP 上报地址 |
@@ -41,7 +41,7 @@ node bridge/onebot/index.mjs
 
 ## 已知限制
 
-- **`/say` 目前只接受 `mode: simulation`**：桥发出的请求也带这个标记。插件侧的“真实平台模式”尚未放开，等授权时一起改；届时 `mode` 会改为 `live`，并要求 DSH 侧也配置允许名单。
+- **`/say` 的 `mode:live` 需要 DSH 设置里「真实平台回复」开关打开**，否则返回 403。桥发的就是 `mode:live`；诊断/离线测试仍可用 `mode:simulation`。
 - 去重表在桥内存里，桥重启后靠 `/say` 账本兜底：`/say` 对同一事件返回同一结果，但桥会再发一次。真机前需要把发送记录落盘。
 - 只处理文本段与 @；图片、表情、回复引用被丢弃。
 - 不支持 NapCat 反向 WebSocket，只支持 HTTP 上报 + HTTP API。

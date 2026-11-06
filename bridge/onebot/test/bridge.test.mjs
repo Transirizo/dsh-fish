@@ -14,7 +14,7 @@ test('normalize：群消息@自己识别为mentioned，私聊无mentioned字段'
   assert.equal(g.body.mentioned, true)
   assert.equal(g.body.text, '你好')
   assert.equal(g.body.sender, '张三')
-  assert.equal(g.body.mode, 'simulation')
+  assert.equal(g.body.mode, 'live')
   const p = normalizeEvent(privEv(), { selfId: SELF, account: 'acct' })
   assert.deepEqual(p.target, { scene: 'private', id: '333' })
   assert.equal('mentioned' in p.body, false)
@@ -26,7 +26,8 @@ test('normalize：@别人不算mentioned；跳过自身、非消息、空文本�
   assert.equal(normalizeEvent(privEv({ message: [{ type: 'image', data: {} }] }), { selfId: SELF }).skip, 'empty-text')
   assert.equal(normalizeEvent(null, { selfId: SELF }).skip, 'not-object')
 })
-test('allowlist：空名单全拒，精确匹配', () => {
+test('allowlist：未设置信任放行；设了则精确匹配，空数组仍全拒', () => {
+  assert.equal(allowed({ scene: 'group', id: '555' }, null), true)
   assert.equal(allowed({ scene: 'group', id: '555' }, []), false)
   assert.equal(allowed({ scene: 'group', id: '555' }, ['group:555']), true)
   assert.equal(allowed({ scene: 'private', id: '555' }, ['group:555']), false)

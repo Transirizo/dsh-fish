@@ -4,9 +4,13 @@ import { Config, read } from '../lib/config.js'
 import { createBudget } from '../lib/budget.js'
 
 test('未实现高风险开关不能仅靠设置为true启用',()=>{
- for(const field of ['sendingEnabled','biliEnabled','proactiveEnabled']) assert.throws(()=>Config({[field]:true}),field)
+ for(const field of ['biliEnabled','proactiveEnabled']) assert.throws(()=>Config({[field]:true}),field)
  assert.throws(()=>Config({toolsRestrict:false}))
  assert.throws(()=>Config({memoryRetentionDays:1}))
+})
+test('真实平台回复开关默认关、可显式开启',()=>{
+ assert.equal(read(Config({}), 'sendingEnabled', true), false)
+ assert.equal(read(Config({sendingEnabled:true}), 'sendingEnabled', false), true)
 })
 test('联网预算拒绝负数零值无穷和超限配置',()=>{
  for(const value of [-1,0,Infinity,NaN,1001]) assert.throws(()=>Config({netMaxQueriesPerHour:value}))

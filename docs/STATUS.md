@@ -4,10 +4,10 @@
 
 ## 生产
 
-- `web` profile 已运行 **dsh-fish-v3 3.2.2**（发布快照 `data/releases/3.2.2/package`），热切换生效、未重启：
-  健康 `version=3.2.2`、`/say` 未配置凭据时 401。见 [3.2.2 发布快照](production-update-3.2.2.md)。
+- `web` profile 已运行 **dsh-fish-v3 3.2.3**（发布快照 `data/releases/3.2.3/package`），热切换生效、未重启：
+  健康 `version=3.2.3`、`/say` 未配置凭据时 401。见 [3.2.3 发布记录](production-update-3.2.3.md)。
 - 旧版 dsh-fish 0.8.8 与星驿（astrbot-relay）已按用户授权移除。
-- 群聊未点名沉默闸门已随 3.2.2 进入生产（对 QQ 生效前需要真实接桥）。
+- 「真实平台回复」开关（`sendingEnabled`）已从代码锁死改为设置项，默认关；群聊未点名沉默闸门已进入生产。
 - 真实 QQ、真实发送、主动发言、B 站：**全部关闭，未验证**。
 
 ## 阶段
@@ -28,12 +28,13 @@
 | 全链路模拟 | `node bridge/onebot/sim/e2e.mjs fish-v3 3084` | 6/6 PASS：假 NapCat → 桥 → 真实 DSH 真实模型 → 假 NapCat；签名拒绝、私聊回复、群聊未@沉默、非名单群拒绝、群聊@回复、重投不二次发送 |
 | 只读预检 | `node packages/dsh-fish-v3/sim/doctor.mjs` | PASS |
 
-## 下一步：接真实 QQ（需要用户提供/授权）
+## 下一步：接真实 QQ（只差 NapCat 的连接信息）
 
-1. NapCat 部署位置与 HTTP API 地址；机器人 QQ 号。
-2. 首批允许名单（哪些群、哪些私聊）。
-3. 授权范围：仅被动回复，还是也允许主动发言。
-4. 届时改动：`/say` 放开 `mode: live`（DSH 侧也校验允许名单）、桥发送记录落盘、配置原生入站凭据、发布 3.2.2。
+用户已自行部署并登录 NapCat，群/私聊名单在 NapCat 侧控制，DSH 只做对话与成长。只差桥能连上 NapCat：
+
+1. NapCat 的 **OneBot v11 HTTP 服务地址**（`NAPCAT_API`，host:port + 可能的 access token）与机器人 QQ 号（`FISH_SELF_ID`）。
+2. NapCat 里加一条 **HTTP 上报**指向桥 `http://127.0.0.1:6199/`，secret 与 `FISH_INBOUND_SECRET` 一致。
+3. DSH 原生凭据 `DSH_FISH_INGRESS_TOKEN`（桥的 `FISH_SAY_TOKEN` 同值）；设置页勾「真实平台回复」；桥 `FISH_SEND_ENABLED=true` 才真正外发。
 
 ## 相关文档
 

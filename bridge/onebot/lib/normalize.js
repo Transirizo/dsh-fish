@@ -28,7 +28,7 @@ export function normalizeEvent(ev, { selfId, account }) {
   return {
     target: { scene, id: channel },
     body: {
-      mode: 'simulation',
+      mode: 'live',
       account: String(account),
       scene,
       channel,
@@ -40,7 +40,8 @@ export function normalizeEvent(ev, { selfId, account }) {
   }
 }
 
-/** 允许名单：targets 形如 ['private:123', 'group:456']；空名单 = 全部拒绝。 */
+/** 允许名单：targets 形如 ['private:123', 'group:456']；未设置（null）＝信任 NapCat 已过滤，全部放行。 */
 export function allowed(target, allowlist) {
+  if (allowlist === null || allowlist === undefined) return true
   return Array.isArray(allowlist) && allowlist.includes(`${target.scene}:${target.id}`)
 }

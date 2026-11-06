@@ -25,7 +25,7 @@ async function fixture(options = {}) {
   async resume(opts) { assert.ok(opts.resumeSessionId); return agents.create(opts) },
  }
  const ctx = { agents, agentPresets:{mount:async(_ctx,id)=>{assert.equal(id,'fish-chat')}}, agentDefaultModel:{currentSelection:()=>({provider:'fixture',model:'stub'})}, sessions:{flush:async()=>{}}, webServer:{register(r){route=r;return()=>{route=null}}} }
- const off = registerSay(ctx,{token:()=> 'synthetic-test-token',dataDir:dir})
+ const off = registerSay(ctx,{token:()=> 'synthetic-test-token',dataDir:dir,config:options.config ?? {}})
  return { off, dir, get disposed(){return disposed}, get calls(){return calls}, get restrictions(){return restrictions}, async request(body,token='synthetic-test-token',method='POST') {
   const req=Readable.from([Buffer.from(typeof body==='string'?body:JSON.stringify(body))]); req.method=method; req.headers={authorization:`Bearer ${token}`}
   let status, value; await route.handler(req,{writeHead(s){status=s},end(t){value=JSON.parse(t)}}); return {status,value}
@@ -38,6 +38,21 @@ test('say rejects credentials, methods, malformed JSON and live input',async()=>
  assert.equal((await f.request('{')).status,400)
  assert.equal((await f.request(event({mode:'live'}))).status,403)
  assert.equal(f.calls,0); await f.off()
+})
+test('真实平台回复开关打开后才接受 mode:live',async()=>{
+ const f=await fixture({config:{sendingEnabled:true}})
+ const live=await f.request(event({mode:'live',account:'live-acct',eventId:'live-1'}))
+ assert.equal(live.status,200)
+ assert.equal(live.value.mode,'live')
+ assert.equal(live.value.delivered,false)
+ assert.equal(f.calls,1)
+ await f.off()
+})
+test('未知 mode 一律拒绝',async()=>{
+ const f=await fixture({config:{sendingEnabled:true}})
+ assert.equal((await f.request(event({mode:'weird'}))).status,400)
+ assert.equal(f.calls,0)
+ await f.off()
 })
 test('say requires scoped identity and blocks secrets',async()=>{
  const f=await fixture()

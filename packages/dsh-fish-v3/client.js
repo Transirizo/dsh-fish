@@ -22,16 +22,11 @@ window.__ModuleLoader__.load({
 
     const FIELDS = [
       { key: 'groupMode', label: '群内节奏', type: 'select' },
-      { key: 'sendingEnabled', label: '真实发送（默认关）', type: 'bool' },
-      { key: 'proactiveEnabled', label: '主动参与（默认关）', type: 'bool' },
-      { key: 'proactiveHeartbeatMs', label: '主动心跳间隔（毫秒）', type: 'number' },
-      { key: 'proactiveMaxPerDay', label: '主动每日上限', type: 'number' },
+      { key: 'sendingEnabled', label: '真实平台回复（默认关）', type: 'bool' },
       { key: 'netMaxQueriesPerHour', label: '联网每小时次数', type: 'number' },
       { key: 'netMaxConcurrent', label: '联网并发数', type: 'number' },
       { key: 'netMaxBytes', label: '联网体积上限（字节）', type: 'number' },
       { key: 'netTimeoutMs', label: '联网超时（毫秒）', type: 'number' },
-      { key: 'memoryRetentionDays', label: '记忆保留天数（0=永久）', type: 'number' },
-      { key: 'biliEnabled', label: 'B 站能力', type: 'bool' },
       { key: 'logLevel', label: '日志级别', type: 'select' },
     ]
 

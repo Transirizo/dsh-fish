@@ -23,14 +23,15 @@ export const Config = z.object({
   memoryRetentionDays: z.const(0).default(0).description('自动保留清理尚未实现，仅允许0。'),
   memoryMaxRecords: z.const(10000).default(10000).description('预留字段；当前不执行自动淘汰。'),
 
-  // 主动参与（默认关闭）
-  proactiveEnabled: z.const(false).default(false).volatile().description('跨范围反思与调度尚未完成安全验收，禁止开启。'),
+  // 主动参与（默认关闭；主动向外发消息尚未实现，先锁死，避免出现一个「开了没效果」的假开关）
+  proactiveEnabled: z.const(false).default(false).volatile().description('主动向外发言尚未实现，暂保持关闭。'),
   proactiveHeartbeatMs: z.number().step(1).min(1000).max(86400000).default(300000).volatile(),
   proactiveMinIdleMs: z.number().step(1).min(0).max(86400000).default(7200000).volatile(),
   proactiveMaxPerDay: z.number().step(1).min(0).max(100).default(2).volatile(),
 
-  // 发送（默认关闭）
-  sendingEnabled: z.const(false).default(false).volatile().description('真实发送链尚未接通，禁止开启；配置不是授权。'),
+  // 发送（默认关闭）。这是「真实平台回复」总开关：打开后 /say 才接受 mode:live 的真实消息。
+  // 投递（真正调 NapCat 发送）由桥的 FISH_SEND_ENABLED 独立控制，这里只决定「要不要接真实消息回话」。
+  sendingEnabled: z.boolean().default(false).volatile().description('真实平台回复总开关（默认关）。打开后接真实 QQ 消息并回话；真正投递由桥控制。'),
   sendingAllowlist: z.array(z.string()).default([]).volatile(),
   sendingCategories: z.array(z.string()).default(['reply']).volatile(),
   sendingCooldownMs: z.number().step(1).min(0).max(86400000).default(5000).volatile(),

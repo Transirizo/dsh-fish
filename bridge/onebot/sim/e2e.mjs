@@ -33,7 +33,7 @@ const startLogged = async (cmd, args, env, name) => {
   const p = spawn(cmd, args, { env: { ...process.env, ...env }, stdio: ['ignore', log.fd, log.fd] })
   procs.push({ p, log }); return p
 }
-await writeFile(path.join(run, 'overlay.yml'), `- id: dsh-fish-v3\n  config:\n    dataDir: ${JSON.stringify(path.join(run, 'state'))}\n    ingressCredentialRef: DSH_FISH_DIAGNOSTIC_TOKEN\n    groupMode: balanced\n`, { mode: 0o600 })
+await writeFile(path.join(run, 'overlay.yml'), `- id: dsh-fish-v3\n  config:\n    dataDir: ${JSON.stringify(path.join(run, 'state'))}\n    ingressCredentialRef: DSH_FISH_DIAGNOSTIC_TOKEN\n    groupMode: balanced\n    sendingEnabled: true\n`, { mode: 0o600 })
 await startLogged('dsh', ['--profile', profile, '--patch', path.join(run, 'overlay.yml'), '--host', '127.0.0.1', '--port', String(dshPort), '--no-open'], { DSH_FISH_DIAGNOSTIC_TOKEN: token }, 'dsh')
 const bridgePort = 6199 + Math.floor(Math.random() * 500)
 await startLogged('node', [path.resolve('bridge/onebot/index.mjs')], {

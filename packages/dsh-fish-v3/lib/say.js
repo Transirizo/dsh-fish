@@ -63,7 +63,9 @@ export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
         let body
         try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')) } catch { return reply(400, { ok: false, error: 'invalid-json' }) }
         if (!body || typeof body !== 'object' || Array.isArray(body)) return reply(400, { ok: false, error: 'invalid-event' })
-        if (body.mode !== 'simulation') return reply(403, { ok: false, error: 'live-ingress-not-authorized' })
+        if (body.mode !== 'simulation' && body.mode !== 'live') return reply(400, { ok: false, error: 'invalid-mode' })
+        // 真实平台消息（mode:live）需管理员在设置里打开「真实平台回复」开关；simulation 仅用于诊断/测试。
+        if (body.mode === 'live' && read(config, 'sendingEnabled', false) !== true) return reply(403, { ok: false, error: 'live-ingress-not-authorized' })
         for (const field of ['account', 'channel', 'eventId', 'sender', 'text']) {
           if (typeof body[field] !== 'string' || !body[field].trim() || body[field].length > (field === 'text' ? 4000 : 128)) return reply(400, { ok: false, error: 'invalid-event' })
         }
@@ -83,7 +85,7 @@ export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
           const mentioned = body.mentioned === true
           const directQuestion = mentioned && /[?？]\s*$/.test(text)
           const d = decide({ mentioned, directQuestion, relevant: mentioned }, read(config, 'groupMode', 'balanced'))
-          if (!d.shouldReply) return reply(200, { ok: true, mode: 'simulation', eventId: body.eventId, silent: true, reason: d.reason, response: '', delivered: false })
+          if (!d.shouldReply) return reply(200, { ok: true, mode: body.mode, eventId: body.eventId, silent: true, reason: d.reason, response: '', delivered: false })
         }
         if (closed || active) return reply(429, { ok: false, error: 'busy' })
         if (Object.keys(state.events).length >= 1000) return reply(429, { ok: false, error: 'ledger-capacity' })
@@ -134,7 +136,7 @@ export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
         }
         if (!completed || !response || looksSecret(response)) throw new Error('turn-not-completed')
         await sessions.flush(agent.session)
-        const result = { ok: true, mode: 'simulation', sessionId, eventId: body.eventId, response, delivered: false }
+        const result = { ok: true, mode: body.mode, sessionId, eventId: body.eventId, response, delivered: false }
         state.events[eventKey] = { status: 'completed', fingerprint, result }
         save()
         await handle.dispose()

@@ -8,8 +8,8 @@
 | dataDir | 存储根，改变不迁移旧数据 | 非volatile，需插件重载 |
 | ingressCredentialRef | 原生DSH凭据引用，限定DSH_FISH_命名空间 | 每次请求重新resolve |
 | ingressToken | 已弃用旧字段，仅为兼容保留，不参与鉴权 | 管理员受控迁移后移除 |
-| sendingEnabled | 真实发送执行链未完成 | 仅允许false，配置不是授权 |
-| proactiveEnabled | 旧反思会跨scope汇总，尚未安全验收 | 仅允许false |
+| sendingEnabled | 真实平台回复总开关：打开后 `/say` 接受 `mode:live` 并回话；真正投递由桥的 `FISH_SEND_ENABLED` 控制 | 默认false，可显式开启 |
+| proactiveEnabled | 主动向外发言尚未实现 | 仅允许false（锁死，避免假开关） |
 | biliEnabled | 无已验证平台适配 | 仅允许false |
 | toolsRestrict | 不允许关闭安全边界 | 仅允许true |
 | memoryRetentionDays | 自动清理未实现 | 仅允许0 |
@@ -27,4 +27,4 @@
 
 ## 后续
 
-设置UI需要按此矩阵区分“已实现/预留/关闭”，不能仅展示可点的布尔开关。生产更新前必须验证有效配置是否与新schema兼容，不能用版本豁免或删配置强行启动。
+设置UI只展示「已实现且可改」的字段；锁死/预留字段不下发可点开关，避免「开了没效果」的假开关。
