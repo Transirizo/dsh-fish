@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # 大肥鱼一键部署（上游 @ssamurias/dsh-fish 0.9.x + OneBot 桥）。
 #
-# 用法：./setup.sh <机器人QQ号>
+# 用法：./setup.sh <机器人QQ号> [主人QQ号]
+#   第二个参数是你自己（真人）的 QQ。填了，只有这个号发来的私聊算"他"，
+#   其他人的私聊按外客处理（另开一间房、不算他来过）；不填，所有私聊都按"他"处理。
 # 前置：宿主机装好 docker + docker compose；本仓库 clone 到本地。
 #
 # 与旧版的区别：不再打包/安装本仓库的 dsh-fish-v3，而是从 npm 装上游
@@ -10,7 +12,8 @@
 # 最后才起桥——上游的 /dsh-fish/* 走 DSH 的 connection 信任栅栏，没有这个密钥调不通。
 set -euo pipefail
 
-QQ="${1:?用法: ./setup.sh <机器人QQ号>}"
+QQ="${1:?用法: ./setup.sh <机器人QQ号> [主人QQ号]}"
+OWNER_QQ="${2:-}"   # 主人(真人)QQ；空＝所有私聊都按"他"处理
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$ROOT/../.." && pwd)"
 DATA="$ROOT/data"
@@ -34,6 +37,17 @@ set_env() {
   cat "$tmp" > "$file"
   rm -f "$tmp"
 }
+
+# 主人 QQ 校验：填了就必须像个号，而且不能等于机器人自己。
+# （2026-11-06 用户实测：老脚本把 FISH_OWNER_QQ 写成了机器人号，
+#   桥一比对，真人的私聊永远对不上，全被打成"外客"。）
+if [ -n "$OWNER_QQ" ]; then
+  printf '%s' "$OWNER_QQ" | grep -qE '^[0-9]{5,12}$' || fail "主人QQ号看起来不对：$OWNER_QQ"
+  [ "$OWNER_QQ" != "$QQ" ] || fail "主人QQ不能是机器人自己（都是 $QQ）；主人要填真人那个号。"
+  echo "   主人QQ：$OWNER_QQ（只有这个号发来的私聊算「他」）"
+else
+  echo "   提示：没填主人QQ——所有私聊都会按「他」处理；想让别人的私聊走外客，重跑时带上你的 QQ 号。"
+fi
 
 mkdir -p "$DATA/dsh" "$DATA/napcat/config" "$DATA/napcat/qq" "$DATA/bridge-state" "$DATA/workspace"
 
@@ -89,7 +103,7 @@ FISH_SAY_URL=http://dsh:3080/dsh-fish/say
 FISH_DSH_HOME=/dsh-home
 FISH_DSH_REPLY=session
 FISH_DSH_SECRET=
-FISH_OWNER_QQ=$QQ
+FISH_OWNER_QQ=$OWNER_QQ
 FISH_SEND_ENABLED=true
 FISH_GROUP_REQUIRE_AT=true
 FISH_LISTEN=0.0.0.0:6199
@@ -162,6 +176,11 @@ echo "========== 配置状态 =========="
 echo "协议         : FISH_PROTOCOL=dsh-fish（/dsh-fish/say）"
 echo "发送         : FISH_SEND_ENABLED=true（桥侧闸门仍然生效）"
 echo "群聊         : 默认只回 @（FISH_GROUP_REQUIRE_AT=true）"
+if [ -n "$OWNER_QQ" ]; then
+  echo "私聊主人     : $OWNER_QQ（只有它的私聊算「他」；别人私聊走外客）"
+else
+  echo "私聊主人     : 未设置（所有私聊都按「他」处理）"
+fi
 echo "回话         : 已打 say.js 补丁；FISH_DSH_REPLY=session 仅作兜底"
 echo "她的家       : data/workspace/.dsh-fish（/workspace 已挂卷，重建不丢）"
 echo

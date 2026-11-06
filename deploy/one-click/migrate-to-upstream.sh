@@ -7,8 +7,9 @@
 #   - 给上游 say.js 打 issue #51 补丁
 #   - 重建 dsh（应用 --trusted-host dsh）与 bridge（换成 dsh-fish 协议）
 #
-# 用法：./migrate-to-upstream.sh [机器人QQ号]
-#   QQ 号不给时从 data/bridge.env 的 FISH_SELF_ID 读。
+# 用法：./migrate-to-upstream.sh [机器人QQ号] [主人QQ号]
+#   QQ 号不给时从 data/bridge.env 的 FISH_SELF_ID 读；
+#   主人QQ不给时沿用 bridge.env 里的 FISH_OWNER_QQ（会把"写成了机器人号"的旧错值丢掉）。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -36,7 +37,21 @@ QQ="${1:-}"
 if [ -z "$QQ" ] && [ -f "$DATA/bridge.env" ]; then
   QQ="$(grep -E '^FISH_SELF_ID=' "$DATA/bridge.env" | head -1 | cut -d= -f2- || true)"
 fi
-[ -n "$QQ" ] || fail "用法：./migrate-to-upstream.sh <机器人QQ号>"
+[ -n "$QQ" ] || fail "用法：./migrate-to-upstream.sh <机器人QQ号> [主人QQ号]"
+
+# 主人 QQ：第二个参数优先；否则沿用 bridge.env 里已填的。
+# 旧版脚本把 FISH_OWNER_QQ 写成了机器人自己的号，那种值等于没填，直接丢掉。
+OWNER_QQ="${2:-}"
+if [ -z "$OWNER_QQ" ] && [ -f "$DATA/bridge.env" ]; then
+  OWNER_QQ="$(grep -E '^FISH_OWNER_QQ=' "$DATA/bridge.env" | head -1 | cut -d= -f2- || true)"
+fi
+if [ "$OWNER_QQ" = "$QQ" ]; then
+  OWNER_QQ=""
+  echo "   注意：bridge.env 里的 FISH_OWNER_QQ 等于机器人号（旧脚本的错），已清空。"
+fi
+if [ -n "$OWNER_QQ" ]; then
+  printf '%s' "$OWNER_QQ" | grep -qE '^[0-9]{5,12}$' || fail "主人QQ号看起来不对：$OWNER_QQ"
+fi
 [ -f "$DATA/bridge.env" ] || fail "没有 $DATA/bridge.env，先跑 setup.sh"
 [ -f "$COMPOSE" ] || fail "没有 $COMPOSE"
 grep -q -- '--trusted-host' "$COMPOSE" || fail "docker-compose.yml 的 dsh command 缺 --trusted-host dsh；先应用仓库里的 compose"
@@ -109,7 +124,7 @@ set_env FISH_SAY_URL http://dsh:3080/dsh-fish/say "$DATA/bridge.env"
 set_env FISH_DSH_HOME /dsh-home "$DATA/bridge.env"
 set_env FISH_DSH_REPLY session "$DATA/bridge.env"
 set_env FISH_DSH_SECRET "$SECRET" "$DATA/bridge.env"
-set_env FISH_OWNER_QQ "$QQ" "$DATA/bridge.env"
+set_env FISH_OWNER_QQ "$OWNER_QQ" "$DATA/bridge.env"
 set_env FISH_SEND_ENABLED true "$DATA/bridge.env"
 set_env FISH_GROUP_REQUIRE_AT true "$DATA/bridge.env"
 chmod 600 "$DATA/bridge.env"
@@ -126,5 +141,10 @@ echo "桥最近日志："
 compose logs --tail 12 bridge
 echo
 echo "接下来：给机器人发一条私聊，桥日志应出现 协议：dsh-fish → 收到上报 → sent。"
+if [ -n "$OWNER_QQ" ]; then
+  echo "        主人QQ=$OWNER_QQ（它的私聊算「他」，别人的私聊走外客）。"
+else
+  echo "        注意：没设主人QQ，所有私聊都会按「他」处理；想区分，重跑并带上第二个参数。"
+fi
 echo "回滚：cp $BK/bridge.env $DATA/bridge.env；docker compose up -d --force-recreate bridge"
 echo "      DSH 侧的回滚需要重新装 v3（不删 dsh-fish 的数据）。"

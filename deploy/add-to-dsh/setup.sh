@@ -11,11 +11,12 @@
 #     --profile <名>           DSH profile（默认 web）
 #     --dsh-url <URL>          现有 DSH 的 /say 地址（默认自动探测宿主机端口）
 #     --napcat-ip <IP>         NapCat 容器 IP（默认 docker inspect 探测）
+#     --owner-qq <号>          主人（真人）QQ；不填＝所有私聊都按"他"处理
 #
 # 前置：docker；现有 DSH 容器健康；NapCat 容器在跑（容器内 OneBot HTTP 服务需绑 0.0.0.0:3000）。
 set -euo pipefail
 
-QQ="${1:?用法: ./setup.sh <QQ号> [--dsh-container 名] [--napcat-container 名] [--profile 名] [--dsh-url URL] [--napcat-ip IP] [--bridge-name 名] [--bridge-port 端口]}"
+QQ="${1:?用法: ./setup.sh <QQ号> [--dsh-container 名] [--napcat-container 名] [--profile 名] [--dsh-url URL] [--napcat-ip IP] [--owner-qq 号] [--bridge-name 名] [--bridge-port 端口]}"
 shift || true
 
 DSH_CONTAINER=""
@@ -23,6 +24,7 @@ NAPCAT_CONTAINER="napcat"
 PROFILE="web"
 DSH_URL=""
 NAP_IP=""
+OWNER_QQ=""
 BRIDGE_NAME="dsh-fish-bridge"
 BRIDGE_PORT="6199"
 while [ $# -gt 0 ]; do
@@ -32,11 +34,18 @@ while [ $# -gt 0 ]; do
     --profile) PROFILE="$2"; shift 2 ;;
     --dsh-url) DSH_URL="$2"; shift 2 ;;
     --napcat-ip) NAP_IP="$2"; shift 2 ;;
+    --owner-qq) OWNER_QQ="$2"; shift 2 ;;
     --bridge-name) BRIDGE_NAME="$2"; shift 2 ;;
     --bridge-port) BRIDGE_PORT="$2"; shift 2 ;;
     *) echo "未知参数: $1"; exit 2 ;;
   esac
 done
+
+# 主人 QQ 校验：填了就必须像个号，且不能是机器人自己（机器人号是上面的 $QQ）。
+if [ -n "$OWNER_QQ" ]; then
+  printf '%s' "$OWNER_QQ" | grep -qE '^[0-9]{5,12}$' || { echo "错误：主人QQ号看起来不对：$OWNER_QQ" >&2; exit 2; }
+  [ "$OWNER_QQ" != "$QQ" ] || { echo "错误：主人QQ不能是机器人自己（都是 $QQ）；主人要填真人那个号。" >&2; exit 2; }
+fi
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$ROOT/../.." && pwd)"
@@ -129,7 +138,7 @@ echo "== 6/6 写桥配置并启动 =="
   else
     echo "FISH_DSH_REPLY=api"
   fi
-  echo "FISH_OWNER_QQ=$QQ"
+  echo "FISH_OWNER_QQ=$OWNER_QQ"
   echo "FISH_GROUP_REQUIRE_AT=true"
   echo "FISH_LISTEN=0.0.0.0:$BRIDGE_PORT"
   echo "FISH_INBOUND_SECRET=$INBOUND_SECRET"
@@ -193,6 +202,11 @@ if [ -n "$GUI_TOKEN" ]; then
   echo "DSH 管理界面：http://127.0.0.1:${DSH_PORT}/?${GUI_TOKEN}   ← 宿主机端口是 ${DSH_PORT}（不是容器日志里的 3080）"
 else
   echo "DSH 管理界面：http://127.0.0.1:${DSH_PORT}/   ← 宿主机端口是 ${DSH_PORT}（不是容器日志里的 3080）；token 见 docker logs $DSH_CONTAINER"
+fi
+if [ -n "$OWNER_QQ" ]; then
+  echo "主人QQ：$OWNER_QQ（它的私聊算「他」；别人的私聊走外客，另开一间房）"
+else
+  echo "主人QQ未设：所有私聊都会按「他」处理；想区分，加 --owner-qq <你的QQ> 重跑"
 fi
 echo "之后：给机器人发一条私聊；桥日志应出现 协议：dsh-fish → 收到上报 → sent。"
 echo "若 say-forbidden：DSH 没信任 Host（用 127.0.0.1 一般不会）；say-unauthorized：FISH_DSH_SECRET 不对。"
