@@ -14,7 +14,8 @@
 
 - DSH 宿主：`@deepseek-ai/dsh` 0.2.2-rc.1。
 - 默认部署：上游 `@ssamurias/dsh-fish` 0.9.1 + `lib/say.js` 的 issue #51 补丁
-  （让 `/dsh-fish/say` 在没有 `growth_commit` 事件时也返回本轮聊天正文）。
+  （`/dsh-fish/say` **优先**返回本轮聊天正文；没有正文时才用她 `growth_commit` 的事件。
+  第一版补丁是反过来的，导致她顺手 commit 一句时 QQ 只收到那句，已修）。
 - 桥：`FISH_PROTOCOL=dsh-fish`，`FISH_SAY_URL=http://<dsh>:3080/dsh-fish/say`；
   cookie 由桥用 DSH 的 `browser-session` 密钥离线铸造，不依赖浏览器。
 - 旧版 v3：迁移脚本只摘 profile 里的依赖/bundles/覆盖行，**不删** `~/.dsh/dsh-fish-v3` 或
