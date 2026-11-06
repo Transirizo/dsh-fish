@@ -15,7 +15,7 @@
 # 前置：docker；现有 DSH 容器健康；NapCat 容器在跑（容器内 OneBot HTTP 服务需绑 0.0.0.0:3000）。
 set -euo pipefail
 
-QQ="${1:?用法: ./setup.sh <QQ号> [--dsh-container 名] [--napcat-container 名] [--profile 名] [--dsh-url URL] [--napcat-ip IP]}"
+QQ="${1:?用法: ./setup.sh <QQ号> [--dsh-container 名] [--napcat-container 名] [--profile 名] [--dsh-url URL] [--napcat-ip IP] [--bridge-name 名] [--bridge-port 端口]}"
 shift || true
 
 DSH_CONTAINER=""
@@ -23,6 +23,8 @@ NAPCAT_CONTAINER="napcat"
 PROFILE="web"
 DSH_URL=""
 NAP_IP=""
+BRIDGE_NAME="dsh-fish-bridge"
+BRIDGE_PORT="6199"
 while [ $# -gt 0 ]; do
   case "$1" in
     --dsh-container) DSH_CONTAINER="$2"; shift 2 ;;
@@ -30,6 +32,8 @@ while [ $# -gt 0 ]; do
     --profile) PROFILE="$2"; shift 2 ;;
     --dsh-url) DSH_URL="$2"; shift 2 ;;
     --napcat-ip) NAP_IP="$2"; shift 2 ;;
+    --bridge-name) BRIDGE_NAME="$2"; shift 2 ;;
+    --bridge-port) BRIDGE_PORT="$2"; shift 2 ;;
     *) echo "未知参数: $1"; exit 2 ;;
   esac
 done
@@ -121,7 +125,7 @@ cat > "$DATA/bridge.env" <<EOF
 FISH_SELF_ID=$QQ
 FISH_SAY_URL=$DSH_URL
 FISH_SAY_TOKEN=$DSH_TOKEN
-FISH_LISTEN=0.0.0.0:6199
+FISH_LISTEN=0.0.0.0:$BRIDGE_PORT
 FISH_INBOUND_SECRET=$INBOUND_SECRET
 NAPCAT_API=http://$NAP_IP:3000
 NAPCAT_TOKEN=$NAP_TOKEN
@@ -130,8 +134,8 @@ FISH_STATE_FILE=/state/bridge-state.jsonl
 EOF
 chmod 600 "$DATA/bridge.env"
 
-docker rm -f dsh-fish-bridge 2>/dev/null || true
-docker run -d --restart=unless-stopped --name dsh-fish-bridge \
+docker rm -f "$BRIDGE_NAME" 2>/dev/null || true
+docker run -d --restart=unless-stopped --name "$BRIDGE_NAME" \
   --network=host --user 0:0 \
   -v "$REPO/bridge/onebot:/app:ro" \
   -v "$DATA/bridge-state:/state" \
@@ -146,7 +150,7 @@ cat > "$DATA/napcat-onebot11_${QQ}.json" <<EOF
       { "enable": true, "name": "http-api", "host": "0.0.0.0", "port": 3000, "enableCors": true, "enableWebsocket": false, "messagePostFormat": "array", "reportSelfMessage": false, "token": "$NAP_TOKEN" }
     ],
     "httpClients": [
-      { "enable": true, "name": "dsh", "url": "http://${NAP_GATEWAY:-$NAP_IP}:6199", "reportSelfMessage": false, "messagePostFormat": "array", "secret": "$INBOUND_SECRET" }
+      { "enable": true, "name": "dsh", "url": "http://${NAP_GATEWAY:-$NAP_IP}:${BRIDGE_PORT}", "reportSelfMessage": false, "messagePostFormat": "array", "secret": "$INBOUND_SECRET" }
     ],
     "wsServers": [],
     "wsReverse": []
@@ -156,7 +160,7 @@ EOF
 
 echo
 echo "========== 完成 =========="
-echo "1) 桥已启动（host 网络，监听 0.0.0.0:6199）：docker logs dsh-fish-bridge"
+echo "1) 桥已启动（host 网络，监听 0.0.0.0:${BRIDGE_PORT}）：docker logs ${BRIDGE_NAME}"
 echo "2) NapCat 配置已生成：$DATA/napcat-onebot11_${QQ}.json"
 echo "   替换进 NapCat 容器并重启（路径按你的 NapCat 版本可能不同）："
 echo "     docker cp $DATA/napcat-onebot11_${QQ}.json $NAPCAT_CONTAINER:/app/napcat/config/onebot11_${QQ}.json"

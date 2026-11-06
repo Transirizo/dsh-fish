@@ -31,6 +31,20 @@ cd deploy/add-to-dsh
   --napcat-ip 192.168.176.3
 ```
 
+### 在同一台机器上「试跑」而不碰生产
+
+如果这台机器**已经有一套在跑的大肥鱼**，直接跑会抢走桥的容器名和 6199 端口。用独立的名字和端口，就能安全试跑：
+
+```bash
+./setup.sh 3836840356 \
+  --dsh-container dsh-clean \
+  --dsh-url http://127.0.0.1:23080/dsh-fish-v3/say \
+  --bridge-name dsh-fish-bridge-test \
+  --bridge-port 16199
+```
+
+测试桥不会收到任何上报（NapCat 仍上报给生产的 6199），所以它只是「装插件 + 起一个闲置的桥」用于验证脚本本身。
+
 ## 脚本做了什么
 
 1. **自动找 DSH 容器**（名字含 `deepseek-harness`/`dsh`）和它发布到宿主机的 3080 端口，推出 `/say` 地址；
