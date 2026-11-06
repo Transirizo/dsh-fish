@@ -43,6 +43,7 @@ export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
       let fingerprint
       let ownsSlot = false
       let agent
+      let handle
       let timer
       try {
         let bytes = 0
@@ -89,13 +90,14 @@ export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
           agentCtx.effect(() => agentCtx.tools.guard(() => '诊断会话禁止所有工具'), 'fish.deny-tool-execution')
         }
         const options = { agentOptions: { ...models.currentSelection(), maxTokens: 512 }, setup }
-        let handle
         if (sessionId) handle = await agents.resume({ resumeSessionId: sessionId, ...options })
         else {
           sessionId = `fish-sim-${randomUUID()}`
           const cwd = path.join(dataDir, 'simulation-chat')
           mkdirSync(cwd, { recursive: true, mode: 0o700 })
           handle = await agents.create({ sessionId, meta: { cwd, agentPreset: 'fish-chat' }, ...options })
+          handles.add(handle)
+          agent = handle.agent
           state.sessions[scope] = sessionId
           save()
         }
@@ -122,13 +124,25 @@ export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
         save()
         await handle.dispose()
         handles.delete(handle)
+        handle = undefined
         return reply(200, result)
       } catch {
-        if (eventKey && ownsSlot) { state.events[eventKey] = { status: 'unknown', fingerprint }; save() }
+        if (eventKey && ownsSlot) {
+          state.events[eventKey] = { status: 'unknown', fingerprint }
+          try { save() } catch { closed = true } // 存储失败使入口进入拒绝态，不能无限继续处理。
+        }
         return reply(503, { ok: false, error: 'turn-unavailable', retry: 'manual-reconcile' })
       } finally {
         clearTimeout(timer)
-        if (agent?.status === 'running') agent.cancel({ kind: 'user' })
+        if (handle) {
+          try {
+            agent?.cancel({ kind: 'user' })
+            await agent?.whenIdle()
+            if (agent) await sessions.flush(agent.session)
+          } catch { /* 清理继续执行，不泄漏异常内容 */ }
+          try { await handle.dispose() } catch { closed = true }
+          handles.delete(handle)
+        }
         if (ownsSlot) active = false
       }
     },

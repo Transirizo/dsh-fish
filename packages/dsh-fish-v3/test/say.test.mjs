@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { Readable } from 'node:stream'
-import { mkdtemp, mkdir } from 'node:fs/promises'
+import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { registerSay } from '../lib/say.js'
 
@@ -9,7 +9,7 @@ await mkdir(path.resolve('data/test-say'), { recursive: true })
 const event = (over = {}) => ({ mode: 'simulation', account: 'fixture', channel: 'one', scene: 'private', eventId: 'ev-1', sender: '合成人物', text: '你好', ...over })
 async function fixture(options = {}) {
  const dir = options.dir ?? await mkdtemp(path.resolve('data/test-say/case-'))
- let route, calls = 0, restrictions = 0
+ let route, calls = 0, restrictions = 0, disposed = 0
  const agents = {
   get() {},
   async create(opts) {
@@ -18,14 +18,14 @@ async function fixture(options = {}) {
    await opts.setup({ tools: { definitions: () => [{name:'bash'}], restrict: (f) => { assert.deepEqual(f.deny,['bash']); restrictions++; return () => {} }, guard: () => () => {} }, effect: (f) => f() })
    const events = []
    const agent = { status:'idle', session: { get seq(){return events.length}, eventAt(i){return events[i]} },
-    followup() { events.push({type:'assistant/message', data:{message:{content:[{type:'text',text:'合成回复'}]}}}, {type:'turn/end',data:{reason:{kind:'completed'}}}) }, whenIdle: async()=>{}, cancel(){} }
-   return { agent, dispose:async()=>{} }
+    followup() { if (options.followupFail) throw Error('synthetic-failure'); events.push({type:'assistant/message', data:{message:{content:[{type:'text',text:'合成回复'}]}}}, {type:'turn/end',data:{reason:{kind:'completed'}}}) }, whenIdle: async()=>{}, cancel(){} }
+   return { agent, dispose:async()=>{disposed++} }
   },
   async resume(opts) { assert.ok(opts.resumeSessionId); return agents.create(opts) },
  }
  const ctx = { agents, agentPresets:{mount:async(_ctx,id)=>{assert.equal(id,'fish-chat')}}, agentDefaultModel:{currentSelection:()=>({provider:'fixture',model:'stub'})}, sessions:{flush:async()=>{}}, webServer:{register(r){route=r;return()=>{route=null}}} }
  const off = registerSay(ctx,{token:()=> 'synthetic-test-token',dataDir:dir})
- return { off, dir, get calls(){return calls}, get restrictions(){return restrictions}, async request(body,token='synthetic-test-token',method='POST') {
+ return { off, dir, get disposed(){return disposed}, get calls(){return calls}, get restrictions(){return restrictions}, async request(body,token='synthetic-test-token',method='POST') {
   const req=Readable.from([Buffer.from(typeof body==='string'?body:JSON.stringify(body))]); req.method=method; req.headers={authorization:`Bearer ${token}`}
   let status, value; await route.handler(req,{writeHead(s){status=s},end(t){value=JSON.parse(t)}}); return {status,value}
  } }
@@ -91,4 +91,24 @@ test('null及数组请求安全拒绝',async()=>{
  for(const body of [null,[],42]) assert.equal((await f.request(body)).status,400)
  assert.equal(f.calls,0)
  await f.off()
+})
+
+
+test('存储路径不可写时响应503且不驱动模型',async()=>{
+ const root=await mkdtemp(path.resolve('data/test-say/storage-failure-'))
+ const f=await fixture({dir:root})
+ await mkdir(path.join(root,'say-ledger-v1.json.tmp')) // 模拟临时账本写入失败，不依赖当前用户权限。
+ const r=await f.request(event())
+ assert.equal(r.status,503)
+ assert.equal(f.calls,0)
+ assert.equal((await f.request(event({eventId:'ev-2'}))).status,429)
+ await f.off()
+})
+test('Agent在followup失败后也会释放，不遗留后台句柄',async()=>{
+ const f=await fixture({followupFail:true})
+ assert.equal((await f.request(event())).status,503)
+ assert.equal(f.calls,1)
+ assert.equal(f.disposed,1)
+ await f.off()
+ assert.equal(f.disposed,1)
 })
