@@ -14,7 +14,8 @@
 
 - DSH 宿主：`@deepseek-ai/dsh` 0.2.2-rc.1。
 - 默认部署：上游 `@ssamurias/dsh-fish` 0.9.1 + `lib/say.js` 的 issue #51 补丁
-  （让 `/dsh-fish/say` 在没有 `growth_commit` 事件时也返回本轮聊天正文）。
+  （`/dsh-fish/say` **优先**返回本轮聊天正文；没有正文时才用她 `growth_commit` 的事件。
+  第一版补丁是反过来的，导致她顺手 commit 一句时 QQ 只收到那句，已修）。
 - 桥：`FISH_PROTOCOL=dsh-fish`，`FISH_SAY_URL=http://<dsh>:3080/dsh-fish/say`；
   cookie 由桥用 DSH 的 `browser-session` 密钥离线铸造，不依赖浏览器。
 - 旧版 v3：迁移脚本只摘 profile 里的依赖/bundles/覆盖行，**不删** `~/.dsh/dsh-fish-v3` 或
@@ -24,12 +25,16 @@
 
 | 你的情况 | 命令 |
 |---|---|
-| 没有 DSH，整栈新装 | `cd deploy/one-click && ./setup.sh <机器人QQ号>` |
-| 已有 DSH，只补大肥鱼 | `cd deploy/add-to-dsh && ./setup.sh <机器人QQ号>` |
-| 已有 one-click 栈，从 v3 迁到上游 | `cd deploy/one-click && ./migrate-to-upstream.sh <机器人QQ号>` |
+| 没有 DSH，整栈新装 | `cd deploy/one-click && ./setup.sh <机器人QQ号> [主人QQ号]` |
+| 已有 DSH，只补大肥鱼 | `cd deploy/add-to-dsh && ./setup.sh <机器人QQ号> --owner-qq <主人QQ号>` |
+| 已有 one-click 栈，从 v3 迁到上游 | `cd deploy/one-click && ./migrate-to-upstream.sh <机器人QQ号> [主人QQ号]` |
 | 从一台 VPS 迁到另一台 | `./export-data.sh` → scp → `./import-data.sh <包>` |
 | 公网访问（宝塔/外部反代） | `cd deploy/one-click && ./set-public-host.sh <域名>` |
 | 公网访问（内置 Caddy） | `cd deploy/one-click && ./enable-public.sh <域名>` |
+
+**主人QQ号要点**：填你自己（真人）的 QQ。填了，只有这个号的私聊算"他来找她"；
+别人的私聊走外客——另开一间房、不记 seen、不算他来过。不填则所有私聊都按"他"处理，
+任何人都能进书房。**别填机器人自己的号**（老脚本就是这么写错的，真人私聊会全被打成外客）。
 
 ## 目录
 

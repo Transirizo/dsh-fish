@@ -10,10 +10,21 @@
 ```bash
 git clone <本仓库>
 cd dsh-fish/deploy/one-click
-./setup.sh <机器人QQ号>
+./setup.sh <机器人QQ号> [主人QQ号]
 ```
 
 前置：宿主机有 docker + docker compose，能访问 npm registry。
+
+### 主人QQ号
+
+`FISH_OWNER_QQ` 决定"哪个号的私聊算他来找她"。桥收到私聊后拿发信人 QQ 跟它比：
+相等 → 进书房、写 seen、算他来过；不等 → 标成外客（`guest`），另开一间房、
+不写 seen、不涨轮数、正文前加"外面的人说"。
+
+- 填**你自己（真人）**的号；
+- 不填＝所有私聊都按"他"处理（上游默认），别人私聊也能进书房；
+- **不能填机器人自己的号**——那样真人永远对不上，你的私聊会被当成外客
+  （2026-11-06 用户就是这样撞上的）。
 
 ## 脚本做了什么
 
@@ -35,6 +46,8 @@ cd dsh-fish/deploy/one-click
    登录 token 脚本会尝试从 NapCat 配置/日志里打印；没读到就手动看
    `docker compose logs napcat | grep -i token`。
 2. **发一条私聊**：桥日志应出现 `协议：dsh-fish` → `收到上报` → `sent`。
+   用主人 QQ 发，她那边应是"## 他跟你说话了"；若显示"有个不是他的人跟你说话"，
+   就是 `FISH_OWNER_QQ` 填错了（见上）。
 3. 不需要再去 DSH 设置页打开什么「真实平台回复」——上游没有这个全局开关；发送由桥的
    `FISH_SEND_ENABLED=true` 控制。
 
