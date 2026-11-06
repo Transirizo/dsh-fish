@@ -1,9 +1,10 @@
 /** 合成事件诊断入口。真实平台接入在宿主隔离与授权验收前拒绝。 */
 import { randomUUID, createHash, timingSafeEqual } from 'node:crypto'
-import { mkdirSync, readFileSync, writeFileSync, renameSync } from 'node:fs'
+import { mkdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { sanitizeForeign, looksSecret } from './guard.js'
 import { setupChatScope } from './chat-scope.js'
+import { acquireLedgerLock, writeLedger } from './ledger-storage.js'
 
 export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
   const agents = ctx.agents ?? ctx.get?.('agents')
@@ -11,22 +12,22 @@ export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
   const sessions = ctx.sessions ?? ctx.get?.('sessions')
   if (!agents || !models || !sessions) throw new Error('缺少原生会话服务')
   const file = path.join(dataDir, 'say-ledger-v1.json')
+  const releaseLock = acquireLedgerLock(dataDir)
   let state = { version: 1, sessions: {}, events: {} }
-  try { state = JSON.parse(readFileSync(file, 'utf8')) } catch (err) {
-    if (err.code !== 'ENOENT') throw err
-  }
-  if (state.version !== 1) throw new Error('不兼容的入站账本版本')
-  const save = () => {
-    mkdirSync(dataDir, { recursive: true, mode: 0o700 })
-    writeFileSync(file + '.tmp', JSON.stringify(state), { mode: 0o600 })
-    renameSync(file + '.tmp', file)
-  }
+  try {
+    try { state = JSON.parse(readFileSync(file, 'utf8')) } catch (err) {
+      if (err.code !== 'ENOENT') throw err
+    }
+    if (state.version !== 1) throw new Error('不兼容的入站账本版本')
+  } catch (err) { releaseLock(); throw err }
+  const save = () => writeLedger(file, state)
   // 进程重启后的在途事件不自动重放。
   for (const entry of Object.values(state.events)) if (entry.status === 'processing') entry.status = 'unknown'
   let active = false
   let closed = false
   const handles = new Set()
-  const unregister = ctx.webServer.register({
+  let unregister
+  try { unregister = ctx.webServer.register({
     kind: 'exact', path: '/dsh-fish-v3/say',
     handler: async (req, res) => {
       const reply = (status, value) => {
@@ -146,7 +147,7 @@ export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
         if (ownsSlot) active = false
       }
     },
-  })
+  }) } catch (err) { releaseLock(); throw err }
   return async () => {
     closed = true
     unregister()
@@ -156,5 +157,6 @@ export function registerSay(ctx, { token, dataDir, memory, config = {} }) {
       await sessions.flush(handle.agent.session)
       await handle.dispose()
     }
+    releaseLock()
   }
 }
