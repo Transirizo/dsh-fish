@@ -12,7 +12,7 @@ services:
       - ./data/dsh:/home/node/.dsh            # profile + 凭据 + 运行数据
     ports:
       - "127.0.0.1:3080:3080"                  # 只绑宿主机回环，和线上一致
-    command: ["web", "--no-open"]
+    command: ["fish", "--no-open"]              # 启动 setup.sh 建好的 fish profile
     networks: [fishnet]
 
   napcat:

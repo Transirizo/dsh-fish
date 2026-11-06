@@ -21,17 +21,40 @@ INBOUND_SECRET="$(rand 16)"   # NapCat 上报签名
 NAP_TOKEN="$(rand 16)"        # NapCat HTTP 服务 token
 
 echo "== 2/5 构建插件 tarball（用镜像里的 npm，宿主机无需 node）=="
-docker run --rm -v "$REPO/packages/dsh-fish-v3:/pkg" -w /pkg "$IMAGE" npm pack --silent >/dev/null
+docker run --rm -v "$REPO/packages/dsh-fish-v3:/pkg" -w /pkg --entrypoint npm "$IMAGE" pack --silent >/dev/null
 TGZ="$(ls -1t "$REPO/packages/dsh-fish-v3/dsh-fish-v3-"*.tgz 2>/dev/null | head -1)"
 [ -n "$TGZ" ] || { echo "错误：找不到插件 tarball"; exit 1; }
 
 echo "== 3/5 准备 DSH profile（fish）+ 安装插件 =="
-# 从 web 模板复制出 fish profile，再把插件装进去。
+# 手动写 profile（与 scripts/deploy-fish.sh 一致），再用 dsh plugin add 装插件。
+PDIR="$DATA/dsh/profiles/fish"
+mkdir -p "$PDIR"
+cat > "$PDIR/package.json" <<EOF
+{
+  "name": "dsh-profile-fish",
+  "private": true,
+  "dsh": {
+    "profile": {
+      "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-fish-v3"]
+    }
+  }
+}
+EOF
+cat > "$PDIR/cordis.yml" <<EOF
+[]
+EOF
+cat > "$PDIR/pnpm-workspace.yaml" <<EOF
+packages:
+  - .
+
+nodeLinker: hoisted
+autoInstallPeers: false
+EOF
 docker run --rm -e DSH_HOME=/home/node/.dsh \
   -v "$DATA/dsh:/home/node/.dsh" \
   -v "$TGZ:/pkg.tgz:ro" \
   --entrypoint sh "$IMAGE" \
-  -c 'dsh --profile fish --from-default-profile web --dump-config >/dev/null 2>&1 || true; dsh plugin --profile fish add file:/pkg.tgz'
+  -c 'dsh plugin --profile fish add file:/pkg.tgz'
 
 echo "== 4/5 写配置（DSH 凭据 / 桥环境 / NapCat onebot 配置）=="
 cat > "$DATA/dsh/.credentials.yaml" <<EOF
