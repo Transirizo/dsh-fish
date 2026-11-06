@@ -20,10 +20,11 @@ DSH_TOKEN="$(rand 32)"        # 桥 ↔ DSH 的 /say 凭据
 INBOUND_SECRET="$(rand 16)"   # NapCat 上报签名
 NAP_TOKEN="$(rand 16)"        # NapCat HTTP 服务 token
 
-echo "== 2/5 构建插件 tarball（用镜像里的 npm，宿主机无需 node）=="
-docker run --rm -v "$REPO/packages/dsh-fish-v3:/pkg" -w /pkg --entrypoint npm "$IMAGE" pack --silent >/dev/null
-TGZ="$(ls -1t "$REPO/packages/dsh-fish-v3/dsh-fish-v3-"*.tgz 2>/dev/null | head -1)"
-[ -n "$TGZ" ] || { echo "错误：找不到插件 tarball"; exit 1; }
+echo "== 2/5 打包插件（tar，无需 node/npm/网络）=="
+TGZ="$DATA/dsh-fish-v3.tgz"
+(cd "$REPO/packages/dsh-fish-v3" && tar -czf "$TGZ" --transform='s,^,package/,' \
+  package.json index.js client.js lib cordis.patch.yml locale icon.svg README.md AGENTS.md)
+[ -s "$TGZ" ] || { echo "错误：插件打包失败"; exit 1; }
 
 echo "== 3/5 准备 DSH profile（fish）+ 安装插件 =="
 # 手动写 profile（与 scripts/deploy-fish.sh 一致），再用 dsh plugin add 装插件。
