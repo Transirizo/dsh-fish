@@ -51,12 +51,10 @@ fi
 [ -n "$DSH_CONTAINER" ] || { echo "错误：找不到 DSH 容器，用 --dsh-container 指定"; exit 1; }
 echo "== 1/6 DSH 容器：$DSH_CONTAINER =="
 
-# ---- 2) 探测 DSH /say 地址 ----
-if [ -z "$DSH_URL" ]; then
-  DSH_PORT="$(docker port "$DSH_CONTAINER" 3080/tcp 2>/dev/null | head -1 | sed 's/.*://' || true)"
-  DSH_PORT="${DSH_PORT:-3080}"
-  DSH_URL="http://127.0.0.1:${DSH_PORT}/dsh-fish-v3/say"
-fi
+# ---- 2) 探测 DSH 宿主机端口与 /say 地址 ----
+DSH_PORT="$(docker port "$DSH_CONTAINER" 3080/tcp 2>/dev/null | head -1 | sed 's/.*://' || true)"
+DSH_PORT="${DSH_PORT:-3080}"
+[ -n "$DSH_URL" ] || DSH_URL="http://127.0.0.1:${DSH_PORT}/dsh-fish-v3/say"
 echo "== 2/6 DSH /say：$DSH_URL =="
 
 # ---- 3) 找 OneBot 后端（NapCat）容器 IP 与网关；没有也继续 ----
@@ -187,5 +185,11 @@ fi
 echo "3) 重启 DSH 让插件生效："
 echo "     docker restart $DSH_CONTAINER"
 echo
+GUI_TOKEN="$(docker logs "$DSH_CONTAINER" 2>&1 | grep -oE 'token=[A-Za-z0-9._-]+' | tail -1 || true)"
+if [ -n "$GUI_TOKEN" ]; then
+  echo "DSH 管理界面：http://127.0.0.1:${DSH_PORT}/?${GUI_TOKEN}   ← 宿主机端口是 ${DSH_PORT}（不是容器日志里的 3080）"
+else
+  echo "DSH 管理界面：http://127.0.0.1:${DSH_PORT}/   ← 宿主机端口是 ${DSH_PORT}（不是容器日志里的 3080）；token 见 docker logs $DSH_CONTAINER"
+fi
 echo "之后：DSH 设置页勾「真实平台回复」，桥会跟随（FISH_SEND_ENABLED=auto）。"
 echo "健康检查：curl -o /dev/null -w '%{http_code}\n' $DSH_URL  # 未带 token 应 401"
