@@ -4,7 +4,15 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { apply, name, VERSION, inject, resolveDataDir } from '../index.js'
+
+/** 版本号只认 package.json，避免每次发版都要改测试里的字面量。 */
+const PKG_VERSION = JSON.parse(
+  readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+).version
+/** 版本形如 3.2.x，且与包声明一致。 */
+const VERSION_RE = /^3\.2\.\d+$/
 
 function mockCtx() {
   const registrations = { sections: [], tools: [], routes: [] }
@@ -28,7 +36,8 @@ function mockCtx() {
 
 test('plugin metadata', () => {
   assert.equal(name, 'dsh-fish-v3')
-  assert.equal(VERSION, '3.2.1')
+  assert.equal(VERSION, PKG_VERSION)
+  assert.match(VERSION, VERSION_RE)
   assert.deepEqual(inject, ['systemPrompt', 'tools', 'webServer'])
 })
 

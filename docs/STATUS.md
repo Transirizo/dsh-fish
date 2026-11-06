@@ -6,7 +6,7 @@
 
 - `web` profile 运行 **dsh-fish-v3 3.2.1**（发布快照 `data/releases/3.2.1/package`），重启后已验证：健康 version=3.2.1、Config 已发现、`/say` 未配置凭据时 401。见 [3.2.1 更新记录](production-update-3.2.1.md)。
 - 旧版 dsh-fish 0.8.8 与星驿（astrbot-relay）已按用户授权移除。
-- 生产尚未包含本轮的群聊沉默闸门（源码已改、未发布）。
+- **3.2.2 已打包待生效**：`data/releases/3.2.2/package`（含群聊沉默闸门），源码与快照一致、测试全绿；装包后需一次 DSH 重启才真正生效。见 [3.2.2 发布快照](production-update-3.2.2.md)。
 - 真实 QQ、真实发送、主动发言、B 站：**全部关闭，未验证**。
 
 ## 阶段
