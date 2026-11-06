@@ -1,6 +1,8 @@
 # 已有 DSH 接入大肥鱼（方案 B）
 
-适用于：**你的 DSH 已经在跑了**，只想补上「大肥鱼插件 + 桥 + NapCat 配置」，不想再起一套 DSH。
+适用于：**你的 DSH 已经在跑了**，只想补上「大肥鱼插件 + 桥（+ 可选 OneBot 后端配置）」，不想再起一套 DSH。
+
+> 桥说的是 **OneBot v11**，NapCat 只是默认例子；没有 NapCat（或想用 go-cqhttp / Lagrange 等其它 OneBot 实现）也能装插件+起桥，只是暂不发送。
 
 > 状态：首版，未在全新机器实测。命令与字段来自 2026-11-06 生产手动接线的验证结果。
 
@@ -44,6 +46,15 @@ cd deploy/add-to-dsh
 ```
 
 测试桥不会收到任何上报（NapCat 仍上报给生产的 6199），所以它只是「装插件 + 起一个闲置的桥」用于验证脚本本身。
+
+## 没有 NapCat 也能用
+
+NapCat 不是必需的。没有它时脚本会：
+- 照常装插件、写凭据、起桥；
+- 桥 `FISH_SEND_ENABLED=false`（dry-run），不发送；
+- 不生成 NapCat 配置，改为提示你：在 `data/bridge.env` 填 `NAPCAT_API`/`NAPCAT_TOKEN`、把 `FISH_SEND_ENABLED` 改回 `auto`，再重启桥。
+
+也就是说，**先把「DSH + 插件 + 桥」装好，OneBot 后端随时再接**。
 
 ## 脚本做了什么
 

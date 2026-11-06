@@ -59,13 +59,19 @@ if [ -z "$DSH_URL" ]; then
 fi
 echo "== 2/6 DSH /say：$DSH_URL =="
 
-# ---- 3) 找 NapCat 容器 IP 与网关 ----
+# ---- 3) 找 OneBot 后端（NapCat）容器 IP 与网关；没有也继续 ----
+# 桥说的是 OneBot v11，NapCat 只是默认例子。没有 NapCat 也能装插件+起桥，只是暂不发送。
+NAP_AVAILABLE=1
 if [ -z "$NAP_IP" ]; then
   NAP_IP="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "$NAPCAT_CONTAINER" 2>/dev/null | awk '{print $1}')"
 fi
 NAP_GATEWAY="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.Gateway}} {{end}}' "$NAPCAT_CONTAINER" 2>/dev/null | awk '{print $1}')"
-[ -n "$NAP_IP" ] || { echo "错误：找不到 NapCat 容器 $NAPCAT_CONTAINER 的 IP，用 --napcat-ip 指定"; exit 1; }
-echo "== 3/6 NapCat 容器 IP：$NAP_IP（宿主机网关：${NAP_GATEWAY:-未知}）=="
+if [ -n "$NAP_IP" ]; then
+  echo "== 3/6 OneBot 后端：NapCat 容器 IP $NAP_IP（宿主机网关：${NAP_GATEWAY:-未知}）=="
+else
+  NAP_AVAILABLE=0
+  echo "== 3/6 没找到 NapCat 容器（$NAPCAT_CONTAINER）：先装插件+起桥，发送留空，配好后填 NAPCAT_API =="
+fi
 
 # ---- 4) 生成密钥 ----
 rand() { openssl rand -hex "$1" 2>/dev/null || node -e "console.log(require('crypto').randomBytes($1).toString('hex'))"; }
@@ -121,17 +127,23 @@ docker exec -e FISH_TOKEN="$DSH_TOKEN" -e PROFILE_DIR="/home/node/.dsh/profiles/
 
 # ---- 6) 写桥配置并起桥（host 网络，才能同时够到 DSH 回环与 NapCat 容器 IP）----
 echo "== 6/6 写桥配置并启动 =="
-cat > "$DATA/bridge.env" <<EOF
-FISH_SELF_ID=$QQ
-FISH_SAY_URL=$DSH_URL
-FISH_SAY_TOKEN=$DSH_TOKEN
-FISH_LISTEN=0.0.0.0:$BRIDGE_PORT
-FISH_INBOUND_SECRET=$INBOUND_SECRET
-NAPCAT_API=http://$NAP_IP:3000
-NAPCAT_TOKEN=$NAP_TOKEN
-FISH_SEND_ENABLED=auto
-FISH_STATE_FILE=/state/bridge-state.jsonl
-EOF
+{
+  echo "FISH_SELF_ID=$QQ"
+  echo "FISH_SAY_URL=$DSH_URL"
+  echo "FISH_SAY_TOKEN=$DSH_TOKEN"
+  echo "FISH_LISTEN=0.0.0.0:$BRIDGE_PORT"
+  echo "FISH_INBOUND_SECRET=$INBOUND_SECRET"
+  if [ "$NAP_AVAILABLE" = 1 ]; then
+    echo "NAPCAT_API=http://$NAP_IP:3000"
+    echo "NAPCAT_TOKEN=$NAP_TOKEN"
+    echo "FISH_SEND_ENABLED=auto"
+  else
+    echo "# NAPCAT_API=http://<你的OneBot后端>:3000   # 配好后取消注释"
+    echo "# NAPCAT_TOKEN="
+    echo "FISH_SEND_ENABLED=false   # 没配 OneBot 后端前先 dry-run"
+  fi
+  echo "FISH_STATE_FILE=/state/bridge-state.jsonl"
+} > "$DATA/bridge.env"
 chmod 600 "$DATA/bridge.env"
 
 docker rm -f "$BRIDGE_NAME" 2>/dev/null || true
@@ -142,8 +154,9 @@ docker run -d --restart=unless-stopped --name "$BRIDGE_NAME" \
   --env-file "$DATA/bridge.env" \
   --entrypoint node "$IMAGE" index.mjs
 
-# ---- 生成 NapCat 配置（不动现有容器，交给你确认后自己替换）----
-cat > "$DATA/napcat-onebot11_${QQ}.json" <<EOF
+# ---- 生成 OneBot 配置（NapCat 格式；没有 NapCat 就跳过）----
+if [ "$NAP_AVAILABLE" = 1 ]; then
+  cat > "$DATA/napcat-onebot11_${QQ}.json" <<EOF
 {
   "network": {
     "httpServers": [
@@ -157,16 +170,22 @@ cat > "$DATA/napcat-onebot11_${QQ}.json" <<EOF
   }
 }
 EOF
+fi
 
 echo
 echo "========== 完成 =========="
 echo "1) 桥已启动（host 网络，监听 0.0.0.0:${BRIDGE_PORT}）：docker logs ${BRIDGE_NAME}"
-echo "2) NapCat 配置已生成：$DATA/napcat-onebot11_${QQ}.json"
-echo "   替换进 NapCat 容器并重启（路径按你的 NapCat 版本可能不同）："
-echo "     docker cp $DATA/napcat-onebot11_${QQ}.json $NAPCAT_CONTAINER:/app/napcat/config/onebot11_${QQ}.json"
-echo "     docker restart $NAPCAT_CONTAINER"
+if [ "$NAP_AVAILABLE" = 1 ]; then
+  echo "2) OneBot(NapCat) 配置已生成：$DATA/napcat-onebot11_${QQ}.json"
+  echo "   替换进 NapCat 并重启（路径按你的版本）："
+  echo "     docker cp $DATA/napcat-onebot11_${QQ}.json $NAPCAT_CONTAINER:/app/napcat/config/onebot11_${QQ}.json"
+  echo "     docker restart $NAPCAT_CONTAINER"
+else
+  echo "2) 没配 OneBot 后端——桥暂为 dry-run。"
+  echo "   配好后在 $DATA/bridge.env 填 NAPCAT_API / NAPCAT_TOKEN，把 FISH_SEND_ENABLED 改回 auto，再重启桥。"
+fi
 echo "3) 重启 DSH 让插件生效："
 echo "     docker restart $DSH_CONTAINER"
 echo
 echo "之后：DSH 设置页勾「真实平台回复」，桥会跟随（FISH_SEND_ENABLED=auto）。"
-echo "健康检查：curl $DSH_URL -o /dev/null -w '%{http_code}\\n'  # 未带 token 应 401"
+echo "健康检查：curl -o /dev/null -w '%{http_code}\n' $DSH_URL  # 未带 token 应 401"
