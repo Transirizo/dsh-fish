@@ -131,6 +131,23 @@ echo "NapCat WebUI : http://127.0.0.1:${NAP_WEB_PORT}/webui"
 echo "健康检查     : curl http://127.0.0.1:${DSH_PORT}/dsh-fish-v3/health"
 echo "桥日志       : docker compose -f $ROOT/docker-compose.yml logs -f bridge"
 echo
+echo "========== NapCat WebUI 登录 token =========="
+# NapCat 首次启动要下 QQ 客户端，给它几秒再读日志/配置
+sleep 8
+NAP_CFG="$(docker compose -f "$ROOT/docker-compose.yml" exec -T napcat sh -c 'cat /app/napcat/config/webui.json 2>/dev/null' 2>/dev/null || true)"
+TOKEN_FROM_CFG="$(printf '%s' "$NAP_CFG" | grep -oE '"(token|password|pwd)"[[:space:]]*:[[:space:]]*"[^"]+"' | head -1 || true)"
+TOKEN_FROM_LOG="$(docker compose -f "$ROOT/docker-compose.yml" logs napcat 2>&1 | grep -iE 'token' | tail -3 || true)"
+if [ -n "$TOKEN_FROM_CFG" ]; then
+  echo "配置里的登录凭据：$TOKEN_FROM_CFG"
+elif [ -n "$TOKEN_FROM_LOG" ]; then
+  echo "日志里的 token 行："
+  printf '%s\n' "$TOKEN_FROM_LOG"
+else
+  echo "还没读到（NapCat 首次启动在下 QQ 客户端，可能要几分钟）。稍后手动看："
+  echo "  docker compose -f $ROOT/docker-compose.yml logs napcat | grep -i token"
+  echo "  docker compose -f $ROOT/docker-compose.yml exec napcat cat /app/napcat/config/webui.json"
+fi
+echo
 echo "========== 接下来（手动） =========="
 echo "  1) 打开上面的 NapCat WebUI，扫码登录机器人 QQ。"
 echo "  2) 打开上面的 DSH 管理界面，设置页勾选大肥鱼的「真实平台回复」——桥会跟随，无需改文件。"

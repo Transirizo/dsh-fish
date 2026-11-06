@@ -24,7 +24,7 @@ cd dsh-fish/deploy/one-click
 
 ## 手动步骤（脚本化不了）
 
-1. **扫码登录**：打开 `http://127.0.0.1:6099/webui`，用机器人 QQ 扫码。第三方协议登录有封号风险，自担。
+1. **扫码登录**：打开 `http://127.0.0.1:6099/webui`，用机器人 QQ 扫码。登录 token 脚本会尝试自动打印（在 NapCat 配置/日志里）；没读到就手动看：`docker compose logs napcat | grep -i token`。第三方协议登录有封号风险，自担。
 2. **开回复开关**：DSH 设置页勾「真实平台回复」。
 3. **开真发**：把 `data/bridge.env` 里 `FISH_SEND_ENABLED` 改成 `true`，`docker compose restart bridge`。
 
