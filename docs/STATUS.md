@@ -32,12 +32,14 @@
 
 ## 下一步（按优先级）
 
-1. **停 astrbot**：`docker ps` 里 astrbot 容器仍在跑（`127.0.0.1:6185`），可能抢话造成重复回复。
-2. **群聊 @ 点名真机实测**：代码就绪（群聊未点名沉默、点名回复），只在模拟通过，真机没验。
-3. **桥发送记录落盘**：现在桥的去重表在内存里，桥重启后 NapCat 若重投同一条消息，桥会再发一次（DSH 侧返回同结果，但桥会重复发送）。需把「已发送 eventId」持久化。
-4. **一键部署**：把真实链路固化成 `docker-compose.yml + setup.sh`（新用户一键安装，规格 §33）；QQ 扫码登录与选群名单脚本化不了，留交互。
-5. 其余：受限抓取代理（SSRF 防御）、模型路由/故障转移、真实模型行为评测、完整实例迁移（§30）。
+已完成：停 astrbot、群聊 @ 点名真机实测、桥去重状态落盘、一键部署首版。
+
+1. **一键部署真机验证**：`deploy/one-click/`（docker-compose + setup.sh）已出首版，未在全新主机跑通；需一台新机（或临时环境）实测，重点验 DSH profile 自动装插件、NapCat 配置字段版本差异、QQ 扫码。
+2. **受限抓取代理**（SSRF 防御）：`fish_browse` 目前拒绝回退系统 fetch，缺注入受限代理；联网预算字段尚未真正生效。
+3. **模型路由/故障转移**：单一模型，无 fallback。
+4. **真实模型行为评测**：`eval/scenarios.json` 有框架，未用真实模型跑。
+5. **完整实例迁移（§30）**：备份恢复只做了单机快照边界，跨机迁移未做。
 
 ## 相关文档
 
-[真实 QQ 接线](production-qq-wiring.md) · [桥 README](../bridge/onebot/README.md) · [聊天隔离](chat-isolation.md) · [入站恢复](ingress-recovery.md) · [凭据](credentials.md) · [配置矩阵](configuration.md) · [测试](testing.md) · [安全](security.md)
+[真实 QQ 接线](production-qq-wiring.md) · [一键部署](../deploy/one-click/README.md) · [桥 README](../bridge/onebot/README.md) · [聊天隔离](chat-isolation.md) · [入站恢复](ingress-recovery.md) · [凭据](credentials.md) · [配置矩阵](configuration.md) · [测试](testing.md) · [安全](security.md)
