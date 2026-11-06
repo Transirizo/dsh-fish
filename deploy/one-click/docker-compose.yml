@@ -1,0 +1,44 @@
+# 大肥鱼一键部署 —— 三个服务放同一个 docker 网络，靠容器名互访，不暴露公网。
+# 运行前先跑 ./setup.sh <机器人QQ号>，它会生成密钥、写配置、装插件，再 docker compose up。
+# 状态：首版，未在全新主机实测。QQ 扫码登录是交互步骤，脚本只负责起好容器打印入口。
+
+services:
+  dsh:
+    image: runzhliu/deepseek-harness:0.2.2-rc.1-r1
+    restart: unless-stopped
+    environment:
+      DSH_HOME: /home/node/.dsh
+    volumes:
+      - ./data/dsh:/home/node/.dsh            # profile + 凭据 + 运行数据
+    ports:
+      - "127.0.0.1:3080:3080"                  # 只绑宿主机回环，和线上一致
+    command: ["web", "--no-open"]
+    networks: [fishnet]
+
+  napcat:
+    image: mlikiowa/napcat-docker:latest
+    restart: unless-stopped
+    volumes:
+      - ./data/napcat/config:/app/napcat/config # onebot11_<qq>.json（setup.sh 生成）
+      - ./data/napcat/qq:/app/napcat/qq         # QQ 登录态，重启不丢
+    ports:
+      - "127.0.0.1:6099:6099"                  # NapCat WebUI（扫码登录用）
+    networks: [fishnet]
+
+  bridge:
+    image: runzhliu/deepseek-harness:0.2.2-rc.1-r1
+    restart: unless-stopped
+    entrypoint: ["node"]
+    command: ["index.mjs"]
+    env_file: ./data/bridge.env                # setup.sh 生成（含密钥）
+    volumes:
+      - ../../bridge/onebot:/app:ro            # 桥代码（只读）
+      - ./data/bridge-state:/state             # 去重状态落盘（可写）
+    depends_on:
+      - dsh
+      - napcat
+    networks: [fishnet]
+
+networks:
+  fishnet:
+    driver: bridge
