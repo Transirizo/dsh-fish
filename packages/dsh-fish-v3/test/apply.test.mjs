@@ -28,7 +28,7 @@ function mockCtx() {
 
 test('plugin metadata', () => {
   assert.equal(name, 'dsh-fish-v3')
-  assert.equal(VERSION, '3.2.0')
+  assert.equal(VERSION, '3.2.1')
   assert.deepEqual(inject, ['systemPrompt', 'tools', 'webServer'])
 })
 

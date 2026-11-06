@@ -1,0 +1,20 @@
+# 3.2.1生产更新记录
+
+2026-11-06，用户明确要求更新。源码112/112单测通过，打包快照SHA256：690c7f5d1dde04bea52bf80b5a836adf65610cce266491464840423124c3d7a8。
+
+## 已执行
+
+- 脱敏校验当前插件配置通过；配置及profile包声明回滚快照保存gitignored data/production-update，含秘密，不对外发布。
+- 原生remove_bundle移除开发link；install_bundle安装独立快照目录data/releases/3.2.1/package。
+- 包安装成功，启用失败：duplicate exact route /dsh-fish-v3/health。
+- 确认profile已选中3.2.1目录且未禁用。当前旧健康handler仍报告3.2.0，证明未更新生效。
+
+## 所需操作
+
+旧版路由未绑定生命周期，无法通过卸载清理本进程残留。需要一次DSH/当前容器重启；不要另起服务或改公网入口。重启后检查健康version=3.2.1、设置页和fish-chat preset，并验证未授权入口拒绝。
+
+## 状态
+
+包已更新、运行时未更新，等待一次重启。没有真实QQ/B站/主动发送启用；旧ingressToken保留但3.2.1不再使用，缺少原生凭据时/say默认401。
+
+回滚：使用原生plugin_manager切回已验证发布目录，版本切换后同样需要确认运行时；旧版3.2.0源码快照需从Git相应提交独立构建，不能把当前源码路径当作旧版恢复点。运行数据未迁移或删除。
