@@ -30,12 +30,13 @@
 | 只读预检 | `node packages/dsh-fish-v3/sim/doctor.mjs` | PASS |
 | **真实 QQ 私聊真发** | 桥日志 `sent sent` + DSH 账本 completed 递增 | **通过**（2026-11-06，真实账号 3836840356，私聊回真发） |
 | **add-to-dsh 真机验证** | 全新 DSH 容器（无插件）+ `deploy/add-to-dsh/setup.sh` | **通过**（2026-11-06）：插件装进 profile 的 deps+bundles、`/dsh-fish-v3/health` 200、桥 `Up` 监听 16199、`发送模式：跟随 DSH 设置（auto）` |
+| **one-click 真机验证** | 干净 macOS + `deploy/one-click/setup.sh` | **通过**（2026-11-06）：三容器起、插件加载、NapCat 扫码登录、上报签名校验通过、QQ 私聊真回 |
 
 ## 下一步（按优先级）
 
 已完成：停 astrbot、群聊 @ 点名真机实测、桥去重状态落盘、一键部署首版、**add-to-dsh 真机验证**。
 
-1. **一键部署（one-click）真机验证**：`deploy/one-click/`（docker-compose + setup.sh）仍未在全新主机跑通；需一台新机实测，重点验 NapCat 配置字段版本差异与 QQ 扫码。`add-to-dsh` 的核心链路（装插件 + 起桥）已实测通过。
+1. **NapCat 字段版本差异**：新版 httpClients 字段是 `token`（旧版 `secret`），模板已按新版；兼容旧版需手动改字段名。
 2. **受限抓取代理**（SSRF 防御）：`fish_browse` 目前拒绝回退系统 fetch，缺注入受限代理；联网预算字段尚未真正生效。
 3. **模型路由/故障转移**：单一模型，无 fallback。
 4. **真实模型行为评测**：`eval/scenarios.json` 有框架，未用真实模型跑。
