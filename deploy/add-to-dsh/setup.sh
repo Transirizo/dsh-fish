@@ -165,7 +165,7 @@ if [ "$NAP_AVAILABLE" = 1 ]; then
       { "enable": true, "name": "http-api", "host": "0.0.0.0", "port": 3000, "enableCors": true, "enableWebsocket": false, "messagePostFormat": "array", "reportSelfMessage": false, "token": "$NAP_TOKEN" }
     ],
     "httpClients": [
-      { "enable": true, "name": "dsh", "url": "http://${NAP_GATEWAY:-$NAP_IP}:${BRIDGE_PORT}", "reportSelfMessage": false, "messagePostFormat": "array", "secret": "$INBOUND_SECRET" }
+      { "enable": true, "name": "dsh", "url": "http://${NAP_GATEWAY:-$NAP_IP}:${BRIDGE_PORT}", "reportSelfMessage": false, "messagePostFormat": "array", "token": "$INBOUND_SECRET" }
     ],
     "wsServers": [],
     "wsReverse": []
