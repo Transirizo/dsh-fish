@@ -36,21 +36,32 @@ const bridge = createBridge({
   sayToken, outbound, log: (m) => console.log(m),
 })
 
+const ts = () => new Date().toISOString()
+/** 只打 ID 不打正文的上报摘要，方便排障又不落消息内容。 */
+function describeEvent(ev) {
+  if (!ev || typeof ev !== 'object') return '非对象'
+  return [ev.post_type, ev.message_type, ev.group_id ? `group:${ev.group_id}` : ev.user_id ? `user:${ev.user_id}` : '', ev.message_id ? `msg:${ev.message_id}` : ''].filter(Boolean).join(' ') || '未知'
+}
+
 const server = createServer(async (req, res) => {
-  if (req.method !== 'POST') { res.writeHead(405).end(); return }
+  if (req.method !== 'POST') { console.log(`[${ts()}] 非POST ${req.method}`); res.writeHead(405).end(); return }
   const chunks = []; let size = 0
   for await (const c of req) { size += c.length; if (size > 65536) { res.writeHead(413).end(); return } chunks.push(c) }
   const raw = Buffer.concat(chunks)
   if (env.FISH_INBOUND_SECRET) {
     const sig = String(req.headers['x-signature'] ?? '')
     const want = 'sha1=' + createHmac('sha1', env.FISH_INBOUND_SECRET).update(raw).digest('hex')
-    if (sig.length !== want.length || !timingSafeEqual(Buffer.from(sig), Buffer.from(want))) { res.writeHead(401).end(); return }
+    if (sig.length !== want.length || !timingSafeEqual(Buffer.from(sig), Buffer.from(want))) {
+      console.log(`[${ts()}] 上报签名校验失败（secret 不匹配或未填）：收到 ${sig.length} 字节签名，期望 ${want.length} 字节`)
+      res.writeHead(401).end(); return
+    }
   }
   // NapCat 只要求快速 2xx；处理异步进行，避免上报超时重投。
   res.writeHead(204).end()
-  let ev; try { ev = JSON.parse(raw.toString('utf8')) } catch { return }
+  let ev; try { ev = JSON.parse(raw.toString('utf8')) } catch { console.log(`[${ts()}] 上报非JSON`); return }
+  console.log(`[${ts()}] 收到上报：${describeEvent(ev)}`)
   const r = await bridge.handle(ev)
-  if (r.action !== 'skip' || r.reason === 'not-allowlisted') console.log(`[${new Date().toISOString()}] ${r.action} ${r.reason ?? ''}`)
+  if (r.action !== 'skip' || r.reason === 'not-allowlisted') console.log(`[${ts()}] ${r.action} ${r.reason ?? ''}`)
 })
 server.listen(Number(port), host, () => {
   console.log(`大肥鱼 OneBot 桥监听 http://${host}:${port}；目标名单：${allowlist ? `${allowlist.length} 个` : '未设置（信任 NapCat 已过滤）'}；发送模式：${sendEnabled ? '真实发送' : 'dry-run（不发送）'}`)
