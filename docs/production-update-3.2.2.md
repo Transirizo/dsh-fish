@@ -31,10 +31,18 @@ Tarball SHA256：`f5c8482c60b69f7e3957546174a185d7013852584229cdd42a175bee54bf67
 快照位于 `data/releases/3.2.2/package`（绝对路径，避免 `link:` 模块缓存问题）。安装后用原生
 `plugin_manager` 的顺序：`remove_bundle` 旧的 → `install_bundle` 这个绝对路径。
 
-**3.2.1 的经验**：装完包不会立刻生效——进程里旧的 `/dsh-fish-v3/health` handler 仍是旧代码，
-启用会报 `duplicate exact route`。所以装包之后**必须重启一次 DSH/当前容器**，重启后按下面自检。
+**3.2.1 的经验**：当时装完包没有立刻生效——进程里旧的 `/dsh-fish-v3/health` handler 仍是旧代码，
+启用报 `duplicate exact route`，必须重启一次。
 
-## 重启后自检
+## 实际执行结果（2026-11-06，未重启即生效）
+
+- `remove_bundle dsh-fish-v3` → 旧 3.2.1 实例的 `dispose` 正常跑完，路由被真正注销。
+- `install_bundle /workspace/create/data/releases/3.2.2/package` → `application: applied`，无 duplicate route。
+- 原因：3.2.1 起路由注册走生命周期（`ctx.effect`），卸载能清干净；3.2.2 在另一个目录，不命中旧模块缓存。
+- 自检：`GET /dsh-fish-v3/health` → `{"ok":true,"version":"3.2.2",...}`；`POST /dsh-fish-v3/say` → `401`。
+- **本次不需要重启**。以后换版本按「先 remove 再 install」的顺序，先 remove 是清路由的关键。
+
+## 重启后自检（备用）
 
 ```bash
 curl -s http://127.0.0.1:3080/dsh-fish-v3/health   # 期望 version=3.2.2，ok=true
@@ -46,5 +54,5 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST http://127.0.0.1:3080/dsh-fish-
 
 ## 回滚
 
-`plugin_manager` 切回 `data/releases/3.2.1/package`（同样需要一次重启确认运行时真的换了版本）。
+`plugin_manager` 切回 `data/releases/3.2.1/package`（同样按 remove → install 的顺序，实测无需重启）。
 运行数据（`/home/node/.dsh/dsh-fish-v3`）未迁移、未删除，两个版本读写同一份数据格式。
