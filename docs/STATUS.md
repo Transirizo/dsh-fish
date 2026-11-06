@@ -29,12 +29,13 @@
 | 全链路模拟 | `node bridge/onebot/sim/e2e.mjs fish-v3 3084` | 6/6 PASS：假 NapCat → 桥 → 真实 DSH 真实模型 → 假 NapCat |
 | 只读预检 | `node packages/dsh-fish-v3/sim/doctor.mjs` | PASS |
 | **真实 QQ 私聊真发** | 桥日志 `sent sent` + DSH 账本 completed 递增 | **通过**（2026-11-06，真实账号 3836840356，私聊回真发） |
+| **add-to-dsh 真机验证** | 全新 DSH 容器（无插件）+ `deploy/add-to-dsh/setup.sh` | **通过**（2026-11-06）：插件装进 profile 的 deps+bundles、`/dsh-fish-v3/health` 200、桥 `Up` 监听 16199、`发送模式：跟随 DSH 设置（auto）` |
 
 ## 下一步（按优先级）
 
-已完成：停 astrbot、群聊 @ 点名真机实测、桥去重状态落盘、一键部署首版。
+已完成：停 astrbot、群聊 @ 点名真机实测、桥去重状态落盘、一键部署首版、**add-to-dsh 真机验证**。
 
-1. **一键部署真机验证**：`deploy/one-click/`（docker-compose + setup.sh）已出首版，未在全新主机跑通；需一台新机（或临时环境）实测，重点验 DSH profile 自动装插件、NapCat 配置字段版本差异、QQ 扫码。
+1. **一键部署（one-click）真机验证**：`deploy/one-click/`（docker-compose + setup.sh）仍未在全新主机跑通；需一台新机实测，重点验 NapCat 配置字段版本差异与 QQ 扫码。`add-to-dsh` 的核心链路（装插件 + 起桥）已实测通过。
 2. **受限抓取代理**（SSRF 防御）：`fish_browse` 目前拒绝回退系统 fetch，缺注入受限代理；联网预算字段尚未真正生效。
 3. **模型路由/故障转移**：单一模型，无 fallback。
 4. **真实模型行为评测**：`eval/scenarios.json` 有框架，未用真实模型跑。
