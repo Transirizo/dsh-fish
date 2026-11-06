@@ -12,7 +12,7 @@
  *   FISH_INBOUND_SECRET NapCat 上报 secret（HMAC-SHA1 签名校验，强烈建议设置）
  *   NAPCAT_API          NapCat HTTP API 基址，如 http://127.0.0.1:3000
  *   NAPCAT_TOKEN        NapCat access token（可选）
- *   FISH_SEND_ENABLED   只有严格等于 "true" 才真实发送；否则 dry-run
+ *   FISH_SEND_ENABLED   true/false 显式；不设或 auto 时跟随 DSH 设置页的「真实平台回复」开关
  *   FISH_STATE_FILE     去重状态文件，默认 /app/bridge-state.jsonl（重启后恢复，避免重发）
  */
 import { createServer } from 'node:http'
@@ -29,10 +29,33 @@ if (!selfId || !sayToken) { console.error('缺少 FISH_SELF_ID 或 FISH_SAY_TOKE
 const allowlistRaw = String(env.FISH_ALLOWLIST ?? '').trim()
 const allowlist = allowlistRaw ? allowlistRaw.split(',').map((s) => s.trim()).filter(Boolean) : null
 const [host, port] = String(env.FISH_LISTEN ?? '127.0.0.1:6199').split(':')
-const sendEnabled = env.FISH_SEND_ENABLED === 'true'
-if (sendEnabled && !env.NAPCAT_API) { console.error('FISH_SEND_ENABLED=true 需要 NAPCAT_API'); process.exit(2) }
 
-const outbound = createOutbound({ apiBase: env.NAPCAT_API ?? 'http://invalid', accessToken: env.NAPCAT_TOKEN, sendEnabled })
+// 发送模式：true/false 显式；auto（默认）跟随 DSH 设置页的「真实平台回复」开关（sendingEnabled）。
+const sendMode = String(env.FISH_SEND_ENABLED ?? 'auto').toLowerCase()
+if (!['true', 'false', 'auto'].includes(sendMode)) { console.error('FISH_SEND_ENABLED 只能是 true / false / auto'); process.exit(2) }
+const sayUrl = env.FISH_SAY_URL ?? 'http://127.0.0.1:3080/dsh-fish-v3/say'
+const healthUrl = sayUrl.replace(/\/say(?:\?.*)?$/, '/health')
+if (sendMode !== 'false' && !env.NAPCAT_API) { console.error('需要 NAPCAT_API（FISH_SEND_ENABLED 不是 false 时）'); process.exit(2) }
+
+// auto：轮询 DSH 健康接口读 sendingEnabled，5 秒缓存；读不到按不发送（fail-safe）。
+let gateCache = { at: 0, value: false }
+async function dshSendingEnabled() {
+  const nowMs = Date.now()
+  if (nowMs - gateCache.at < 5000) return gateCache.value
+  try {
+    const res = await fetch(`${healthUrl}?t=${nowMs}`)
+    if (!res.ok) throw new Error(`health ${res.status}`)
+    const data = await res.json()
+    gateCache = { at: nowMs, value: data?.sendingEnabled === true }
+  } catch {
+    gateCache = { at: nowMs, value: false }
+  }
+  return gateCache.value
+}
+const gate = sendMode === 'true' ? async () => true : sendMode === 'false' ? async () => false : dshSendingEnabled
+const modeLabel = sendMode === 'auto' ? '跟随 DSH 设置（auto）' : sendMode === 'true' ? '真实发送' : 'dry-run（不发送）'
+
+const outbound = createOutbound({ apiBase: env.NAPCAT_API ?? 'http://invalid', accessToken: env.NAPCAT_TOKEN, sendEnabled: sendMode === 'true', gate })
 
 // 去重状态落盘：重启后从文件恢复已处理事件，避免 NapCat 重投导致重复发送。
 const maxSeen = 2000
@@ -91,7 +114,7 @@ const server = createServer(async (req, res) => {
   if (r.action !== 'skip' || r.reason === 'not-allowlisted') console.log(`[${ts()}] ${r.action} ${r.reason ?? ''}`)
 })
 server.listen(Number(port), host, () => {
-  console.log(`大肥鱼 OneBot 桥监听 http://${host}:${port}；目标名单：${allowlist ? `${allowlist.length} 个` : '未设置（信任 NapCat 已过滤）'}；发送模式：${sendEnabled ? '真实发送' : 'dry-run（不发送）'}`)
+  console.log(`大肥鱼 OneBot 桥监听 http://${host}:${port}；目标名单：${allowlist ? `${allowlist.length} 个` : '未设置（信任 NapCat 已过滤）'}；发送模式：${modeLabel}`)
   if (!env.FISH_INBOUND_SECRET) console.warn('警告：未设置 FISH_INBOUND_SECRET，上报未做签名校验')
 })
 for (const s of ['SIGTERM', 'SIGINT']) process.on(s, () => server.close(() => process.exit(0)))

@@ -53,6 +53,17 @@ test('outbound：真实发送走正确端点，冷却与日上限生效，失败
   const bad = createOutbound({ apiBase: 'http://x', sendEnabled: true, fetchFn: async () => { throw Error('timeout') } })
   assert.equal((await bad.send({ scene: 'group', id: '1' }, 'e')).reason, 'outcome-unknown')
 })
+test('outbound：gate 动态闸（async）决定是否发送', async () => {
+  let allow = false
+  const calls = []
+  const fetchFn = async (url) => { calls.push(url); return { ok: true, json: async () => ({ status: 'ok', retcode: 0 }) } }
+  const o = createOutbound({ apiBase: 'http://napcat/', gate: async () => allow, fetchFn })
+  assert.equal((await o.send({ scene: 'private', id: '1' }, 'hi')).reason, 'dry-run')
+  assert.equal(calls.length, 0)
+  allow = true
+  assert.equal((await o.send({ scene: 'private', id: '1' }, 'hi')).sent, true)
+  assert.equal(calls.length, 1)
+})
 test('bridge：不在名单不调用/say；沉默不发送；回复交给出站', async () => {
   const sayCalls = []; const sent = []
   const sayFetch = async (_u, init) => { const b = JSON.parse(init.body); sayCalls.push(b); return { status: 200, json: async () => b.scene === 'group' && !b.mentioned ? { ok: true, silent: true, reason: 'not-relevant' } : { ok: true, response: '回复内容' } } }

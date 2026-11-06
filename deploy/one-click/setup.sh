@@ -75,7 +75,7 @@ FISH_LISTEN=0.0.0.0:6199
 FISH_INBOUND_SECRET=$INBOUND_SECRET
 NAPCAT_API=http://napcat:3000
 NAPCAT_TOKEN=$NAP_TOKEN
-FISH_SEND_ENABLED=false
+FISH_SEND_ENABLED=auto
 FISH_STATE_FILE=/state/bridge-state.jsonl
 EOF
 chmod 600 "$DATA/bridge.env"
@@ -103,8 +103,8 @@ docker compose -f "$ROOT/docker-compose.yml" up -d
 echo
 echo "启动完成。接下来（手动）："
 echo "  1) 打开 NapCat WebUI：http://127.0.0.1:${NAPCAT_WEB_PORT:-16099}/webui ，扫码登录机器人 QQ。"
-echo "  2) 打开 DSH 设置页，勾选大肥鱼的「真实平台回复」。"
-echo "  3) 把 bridge.env 里的 FISH_SEND_ENABLED 改成 true 后：docker compose restart bridge"
+echo "  2) 打开 DSH 设置页，勾选大肥鱼的「真实平台回复」——桥会跟随它，无需再改文件。"
+echo "  3) （可选）想在测试时强制 dry-run，把 bridge.env 的 FISH_SEND_ENABLED 改成 false 后重启桥。"
 echo
 echo "健康检查：curl http://127.0.0.1:${DSH_PORT:-13080}/dsh-fish-v3/health"
 echo "桥日志：  docker compose -f $ROOT/docker-compose.yml logs -f bridge"

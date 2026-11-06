@@ -33,7 +33,7 @@ NapCat（HTTP API send_*_msg）← 桥（发送闸：开关、冷却、日上限
 | `FISH_LISTEN` | 默认 `127.0.0.1:6199`，填到 NapCat 的 HTTP 上报地址 |
 | `FISH_INBOUND_SECRET` | 与 NapCat 上报 secret 一致（强烈建议） |
 | `NAPCAT_API` / `NAPCAT_TOKEN` | NapCat HTTP API 地址与 access token |
-| `FISH_SEND_ENABLED` | 只有 `true` 才真实发送，否则只记录 |
+| `FISH_SEND_ENABLED` | `true`/`false` 显式；不设或 `auto` 时跟随 DSH 设置页的「真实平台回复」开关（`sendingEnabled`） |
 | `FISH_STATE_FILE` | 去重状态文件，默认 `/app/bridge-state.jsonl`；重启后恢复已处理事件，避免重发 |
 
 ```bash
