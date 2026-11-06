@@ -43,7 +43,7 @@
 
 | 项 | 命令 | 结果 |
 |---|---|---|
-| 单元测试 | `node --test packages/dsh-fish-v3/test/*.test.mjs` | **109/109 PASS**（新增卸载等待在途创建、锁持有与重启未知结果回归） |
+| 单元测试 | `node --test packages/dsh-fish-v3/test/*.test.mjs` | **112/112 PASS**（新增只读配置诊断、秘密不回显与未验证版本拒绝回归） |
 | 原生 DSH /say 合成回合 | 私聊、群聊、重复事件、私聊第二轮恢复 | **PASS**；delivered=false，见 [验证报告](say-verification.md) |
 | 可复现原生验收脚本 | `node packages/dsh-fish-v3/sim/native-dsh.mjs fish-v3 3083` | **9/9 PASS**；独立实例身份、鉴权、真实模式拒绝、真实模型、去重、冲突、群聊及账本验证；自动停进程 |
 | 离线闭环 | `node packages/dsh-fish-v3/sim/offline.mjs` | **11/11 PASS** |
