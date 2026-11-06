@@ -27,8 +27,8 @@ TGZ="$DATA/dsh-fish-v3.tgz"
 [ -s "$TGZ" ] || { echo "错误：插件打包失败"; exit 1; }
 
 echo "== 3/5 准备 DSH profile（fish）+ 安装插件 =="
-# 手动写 profile（与 scripts/deploy-fish.sh 一致），再用 dsh plugin add 装插件。
-PDIR="$DATA/dsh/profiles/fish"
+# 用 web 这个 profile 名：镜像的 web relay 只在 profile 名为 web 时启动（否则 Web 只监听回环、外部进不来）。
+PDIR="$DATA/dsh/profiles/web"
 mkdir -p "$PDIR"
 cat > "$PDIR/package.json" <<EOF
 {
@@ -57,7 +57,7 @@ docker run --rm -e DSH_HOME=/home/node/.dsh \
   -v "$DATA/dsh:/home/node/.dsh" \
   -v "$TGZ:/pkg.tgz:ro" \
   --entrypoint sh "$IMAGE" \
-  -c 'dsh plugin --profile fish add file:/pkg.tgz'
+  -c 'dsh plugin --profile web add file:/pkg.tgz'
 
 echo "== 4/5 写配置（DSH 凭据 / 桥环境 / NapCat onebot 配置）=="
 cat > "$DATA/dsh/.credentials.yaml" <<EOF

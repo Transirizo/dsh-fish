@@ -12,7 +12,7 @@ services:
       - ./data/dsh:/home/node/.dsh            # profile + 凭据 + 运行数据
     ports:
       - "${DSH_PORT:-13080}:3080"                # 宿主端口可配；默认 13080 避开线上 3080
-    command: ["fish", "--no-open"]              # 启动 setup.sh 建好的 fish profile
+    command: ["web", "--no-open"]               # 必须是 web：镜像的 web relay 只在 web 这个 profile 下启动
     networks: [fishnet]
 
   napcat:
