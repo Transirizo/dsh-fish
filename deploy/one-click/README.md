@@ -57,7 +57,7 @@ DSH 的启动命令带 **`--trusted-host dsh`**：桥用 `http://dsh:3080` 访�
 
 **它安全吗**：`--trusted-host` 只放宽 Host 栅栏，不认证、不放行；过了栅栏仍要 `dsh-auth-…`
 cookie。风险在于 `dsh` 是可预测的名字，所以前提是**端口不暴露公网**（本 compose 已绑回环）。
-详见 [`docs/upstream-dsh-fish.md`](../../docs/upstream-dsh-fish.md#trusted-host-安全吗)。
+详见 [`docs/upstream-dsh-fish.md`](../../docs/upstream-dsh-fish.md)。
 
 ## 数据目录
 
@@ -90,6 +90,40 @@ cd deploy/one-click && ./import-data.sh dsh-fish-data-<时间>.tar.gz
 ```
 
 包里有 DSH 凭据、`FISH_DSH_SECRET`、NapCat token 和 QQ 登录态；详见 [VPS 迁移](../../docs/vps-migration.md)。
+
+## 公网访问
+
+默认所有端口只绑 `127.0.0.1`。公网有两种接法：
+
+### 宝塔 / 外部 Nginx 反代（推荐，已有面板时）
+
+```bash
+cd deploy/one-click
+./set-public-host.sh fish.example.com
+```
+
+它只写 `.env`（`PUBLIC_HOST` / `PUBLIC_URL`）并重建 dsh，让 DSH 带
+`--trusted-host fish.example.com --public-url https://fish.example.com/`；
+TLS 和密码由宝塔负责。站点配置片段：[`baota-reverse-proxy.conf`](baota-reverse-proxy.conf)，
+步骤见 [`docs/public-access-baota.md`](../../docs/public-access-baota.md)。
+
+**关键**：宝塔反代必须 `proxy_set_header Host $host;`，否则 DSH 铸的 cookie 是
+`127.0.0.1:13080` 的，公网域名下登录会循环。
+
+### 内置 Caddy（没有面板时）
+
+```bash
+./enable-public.sh fish.example.com
+```
+
+起 Caddy：自动 TLS + basic auth（用户名 `fish`），反代到 `dsh:3080`；关闭 `./disable-public.sh`。
+细节：[`docs/public-access.md`](../../docs/public-access.md)。
+
+两种方式都保持：`13080` 只绑回环、`/dsh-fish/*` 公网 404。
+
+**NapCat WebUI 默认不暴露**；如果一定要公网，用第二个子域名（如 `napcat.example.com`）反代到
+`127.0.0.1:16099`，并且至少加独立强密码 + IP 白名单 + WebSocket；片段见
+[`baota-napcat-reverse-proxy.conf`](baota-napcat-reverse-proxy.conf)。更稳的是只给 SSH/Tailscale。
 
 ## 排错
 

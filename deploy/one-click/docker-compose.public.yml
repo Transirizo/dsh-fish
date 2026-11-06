@@ -1,0 +1,22 @@
+# 公网访问叠加层：只在 ./enable-public.sh 时用。
+#   docker compose -f docker-compose.yml -f docker-compose.public.yml up -d
+#
+# DSH 自己仍然只绑 127.0.0.1（见 docker-compose.yml 的 ports）；公网只开 Caddy 的 80/443。
+# 不要把 13080 直接发布到 0.0.0.0——那样 basic auth 和 TLS 都绕过了。
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:?先跑 ./enable-public.sh <域名>（会写 .env）}
+      BASIC_AUTH_HASH: ${BASIC_AUTH_HASH:?先跑 ./enable-public.sh <域名>}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./data/caddy/data:/data
+      - ./data/caddy/config:/config
+    depends_on:
+      - dsh
+    networks: [fishnet]

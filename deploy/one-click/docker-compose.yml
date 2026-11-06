@@ -16,7 +16,9 @@ services:
       - "127.0.0.1:${DSH_PORT:-13080}:3080"      # 只绑回环；远程用 SSH 隧道，别暴露公网
     # --trusted-host dsh：桥若用容器名 dsh:3080 接上游 dsh-fish 的 /dsh-fish/*，
     # 这个 Host 必须写进信任栅栏，否则 403；走 127.0.0.1 访问则用不到。
-    command: ["web", "--no-open", "--trusted-host", "dsh"]
+    # 公网模式由 enable-public.sh 写 .env（PUBLIC_HOST / PUBLIC_URL）后生效；
+    # 没配时只信 dsh + localhost，public-url 指向本机回环。
+    command: ["web", "--no-open", "--trusted-host", "dsh", "--trusted-host", "${PUBLIC_HOST:-localhost}", "--public-url", "${PUBLIC_URL:-http://127.0.0.1:13080/}"]
     networks: [fishnet]
 
   napcat:

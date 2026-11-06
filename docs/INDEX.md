@@ -27,6 +27,8 @@
 - [`production-qq-wiring.md`](production-qq-wiring.md) — 真实 QQ 接线拓扑与踩坑记录（v3 时期）
 - [`upstream-dsh-fish.md`](upstream-dsh-fish.md) — 上游 dsh-fish 接入、#51 补丁、信任栅栏与迁移
 - [`vps-migration.md`](vps-migration.md) — VPS 之间迁移：导什么、怎么导、换机注意
+- [`public-access.md`](public-access.md) — 公网访问（内置 Caddy）：TLS + basic auth、安全边界与排错
+- [`public-access-baota.md`](public-access-baota.md) — 宝塔 Nginx 反代：Host 头、WebSocket、密码访问与排错
 - [`operations.md`](operations.md) — 运维与健康
 - [`migration.md`](migration.md) — 跨服务器迁移与回滚
 - [`backup-safety.md`](backup-safety.md) — 当前记忆快照安全边界（不是完整迁移）

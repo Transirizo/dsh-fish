@@ -1,0 +1,30 @@
+# Caddy 公网入口：TLS（自动 ACME）+ basic auth + 反代到 fishnet 里的 dsh:3080。
+#
+# 只给 DSH GUI 用；NapCat WebUI 不在这里暴露（扫码走 SSH 隧道）。
+# /dsh-fish/* 是桥的入站口，只在 compose 内网用，公网一律 404。
+#
+# 变量由 deploy/one-click/.env 提供：
+#   PUBLIC_HOST       fish.example.com（不要带 https://）
+#   BASIC_AUTH_HASH   enable-public.sh 用 caddy hash-password 生成
+
+{$PUBLIC_HOST} {
+    encode zstd gzip
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        -Server
+    }
+
+    # 用户名固定 fish；密码哈希在 .env 里
+    basic_auth {
+        fish {$BASIC_AUTH_HASH}
+    }
+
+    # 桥的入口不对外
+    @bridge path /dsh-fish/* /dsh-fish-v3/*
+    respond @bridge "not found" 404
+
+    reverse_proxy dsh:3080 {
+        header_up Host {host}
+    }
+}

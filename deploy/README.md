@@ -47,6 +47,19 @@ cd deploy/one-click
 
 详见 [docs/vps-migration.md](../docs/vps-migration.md)。
 
+## 公网访问 DSH GUI
+
+默认只绑回环；公网有两种接法：
+
+- **宝塔 / 外部 Nginx 反代**（已有面板）：`cd deploy/one-click && ./set-public-host.sh fish.example.com`，
+  站点配置用 [`baota-reverse-proxy.conf`](one-click/baota-reverse-proxy.conf)，详见
+  [docs/public-access-baota.md](../docs/public-access-baota.md)。
+- **内置 Caddy**：`./enable-public.sh fish.example.com`，详见
+  [docs/public-access.md](../docs/public-access.md)。
+
+两种都保持 `13080` 不对外、`/dsh-fish/*` 公网 404。NapCat `16099` 默认不暴露；要公开就单独一个
+子域名 + 独立强密码 + IP 白名单（`baota-napcat-reverse-proxy.conf`），但风险明显更高，建议 SSH/Tailscale。
+
 ## 三者的共同点
 
 - 插件是标准 DSH 插件，装在 DSH 的 profile 里；桥是独立进程，不持有模型/记忆/身份；

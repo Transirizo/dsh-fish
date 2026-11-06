@@ -28,6 +28,8 @@
 | 已有 DSH，只补大肥鱼 | `cd deploy/add-to-dsh && ./setup.sh <机器人QQ号>` |
 | 已有 one-click 栈，从 v3 迁到上游 | `cd deploy/one-click && ./migrate-to-upstream.sh <机器人QQ号>` |
 | 从一台 VPS 迁到另一台 | `./export-data.sh` → scp → `./import-data.sh <包>` |
+| 公网访问（宝塔/外部反代） | `cd deploy/one-click && ./set-public-host.sh <域名>` |
+| 公网访问（内置 Caddy） | `cd deploy/one-click && ./enable-public.sh <域名>` |
 
 ## 目录
 
@@ -47,6 +49,8 @@ docs/                    架构、部署、迁移、安全、测试、状态
 - 已有 DSH：`deploy/add-to-dsh/README.md`
 - 上游迁移与 issue #51 补丁：`docs/upstream-dsh-fish.md`
 - VPS 之间迁移：`docs/vps-migration.md`
+- 公网访问（宝塔/外部反代）：`docs/public-access-baota.md`
+- 公网访问（内置 Caddy）：`docs/public-access.md`
 - 当前进度：`docs/STATUS.md`
 
 ## 安全红线（先读）
