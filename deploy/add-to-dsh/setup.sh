@@ -82,7 +82,7 @@ TGZ="$DATA/dsh-fish-v3.tgz"
 [ -s "$TGZ" ] || { echo "错误：打包失败"; exit 1; }
 
 docker cp "$TGZ" "$DSH_CONTAINER:/tmp/dsh-fish-v3.tgz"
-docker exec "$DSH_CONTAINER" sh -c "cd /home/node/.dsh/profiles/$PROFILE && dsh plugin add file:/tmp/dsh-fish-v3.tgz"
+docker exec "$DSH_CONTAINER" sh -c "dsh plugin --profile $PROFILE add file:/tmp/dsh-fish-v3.tgz"
 
 # 补 bundles + 写凭据（用独立 JS 文件，避免引号地狱）
 cat > "$DATA/install-hook.mjs" <<'JS'
