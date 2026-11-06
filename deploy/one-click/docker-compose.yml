@@ -11,7 +11,7 @@ services:
     volumes:
       - ./data/dsh:/home/node/.dsh            # profile + 凭据 + 运行数据
     ports:
-      - "127.0.0.1:3080:3080"                  # 只绑宿主机回环，和线上一致
+      - "${DSH_PORT:-13080}:3080"                # 宿主端口可配；默认 13080 避开线上 3080
     command: ["fish", "--no-open"]              # 启动 setup.sh 建好的 fish profile
     networks: [fishnet]
 
@@ -22,7 +22,7 @@ services:
       - ./data/napcat/config:/app/napcat/config # onebot11_<qq>.json（setup.sh 生成）
       - ./data/napcat/qq:/app/napcat/qq         # QQ 登录态，重启不丢
     ports:
-      - "127.0.0.1:6099:6099"                  # NapCat WebUI（扫码登录用）
+      - "${NAPCAT_WEB_PORT:-16099}:6099"        # 宿主端口可配；默认 16099 避开线上 6099
     networks: [fishnet]
 
   bridge:

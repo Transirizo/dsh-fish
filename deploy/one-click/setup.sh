@@ -102,9 +102,11 @@ docker compose -f "$ROOT/docker-compose.yml" up -d
 
 echo
 echo "启动完成。接下来（手动）："
-echo "  1) 打开 NapCat WebUI：http://127.0.0.1:6099/webui ，扫码登录机器人 QQ。"
+echo "  1) 打开 NapCat WebUI：http://127.0.0.1:${NAPCAT_WEB_PORT:-16099}/webui ，扫码登录机器人 QQ。"
 echo "  2) 打开 DSH 设置页，勾选大肥鱼的「真实平台回复」。"
 echo "  3) 把 bridge.env 里的 FISH_SEND_ENABLED 改成 true 后：docker compose restart bridge"
 echo
-echo "健康检查：curl http://127.0.0.1:3080/dsh-fish-v3/health"
+echo "健康检查：curl http://127.0.0.1:${DSH_PORT:-13080}/dsh-fish-v3/health"
 echo "桥日志：  docker compose -f $ROOT/docker-compose.yml logs -f bridge"
+echo
+echo "注意：若与线上同机、同 QQ 号测试，扫码登录会顶掉线上 NapCat 的登录态。"
